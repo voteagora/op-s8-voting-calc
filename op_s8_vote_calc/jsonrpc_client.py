@@ -10,8 +10,8 @@ from web3 import Web3
 from web3.exceptions import Web3RPCError
 from abifsm import ABISet, ABI
 
-from utils import camel_to_snake
-from signatures import VOTE_CAST_1, VOTE_CAST_WITH_PARAMS_1
+from .utils import camel_to_snake
+from .signatures import VOTE_CAST_1, VOTE_CAST_WITH_PARAMS_1
 
 logr = logging.getLogger(__name__)
 
@@ -216,6 +216,8 @@ class JsonRpcHistHttpClient(SubscriptionPlannerMixin):
             "address": contract_address,
             "topics": [event_signature_hash]
         }
+
+        print(event_filter)
 
         try:
             logs = w3.eth.get_logs(event_filter)

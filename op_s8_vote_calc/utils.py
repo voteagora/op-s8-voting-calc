@@ -1,4 +1,5 @@
 import re
+from yaml import load, FullLoader
 
 pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 def camel_to_snake(a_str):

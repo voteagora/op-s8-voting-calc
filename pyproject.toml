@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "op-s8-vote-calc"
+description = "A command-line interface tool for downloading and calculating vote results"
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["version"]
+dependencies = [
+    "click",
+    "requests",
+    "web3",
+    "abifsm @ git+https://github.com/voteagora/abifsm@master",
+    "PyYAML",
+    "pandas",
+]
+
+[project.scripts]
+ops8vote = "op_s8_vote_calc.cli:main"
+
+[tool.setuptools]
+packages = ["op_s8_vote_calc"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+op_s8_vote_calc = ["abis/**/*.json", "config/*.yaml"]
+
+[tool.setuptools_scm]
+write_to = "op_s8_vote_calc/_version.py"
