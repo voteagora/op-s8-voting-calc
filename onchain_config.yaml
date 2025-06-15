@@ -1,0 +1,59 @@
+
+
+
+test:
+  chain_id: 11155420
+  token: 
+    address: '1100000000000000000000000'
+  gov: 
+    address: '0x368723068b6C762b416e5A7d506a605E8b816C22'
+    modules:
+      - address: '0x4E2e3509F4C77Df377FeE48e3969BB7000B9FAF1'
+        name: 'approval'
+      - address: '0xd88b3D2DFf4ACF38CBD6C425F40Cd1A687E1ee4B'
+        name: 'optimistic'
+  ptc:
+    address: '0xb88131610ff4D7D46050c9d1DEE413f8b6b8A5bd'
+    proposal_label_map:
+      '0':
+        friendly_name: 'STANDARD'
+        onchain_name: 'default'
+        quorum: 3000
+        approval_thresh: 5100        
+      '1':
+        friendly_name: 'APPROVAL'
+        onchain_name: 'Alt - Approval'
+        quorum: 5000
+        approval_thresh: 7000       
+      '2':
+        friendly_name: 'OPTIMISTIC'
+        onchain_name: 'Optimistic'
+
+  alligator:
+    address: '0x5d729d4c0BF5d0a2Fa0F801c6e0023BD450c4fd6'
+  rpc: 'https://sepolia.optimism.io'
+  start_block: 28503078
+  end_block: 28966785
+  
+main:
+  chain_id: 10
+  token: 
+    address: '0x4200000000000000000000000000000000000042'
+  gov: 
+    address: '0xcDF27F107725988f2261Ce2256bDfCdE8B382B10'
+    modules:
+      - address: '0x54a8fcbbf05ac14bef782a2060a8c752c7cc13a5'
+        name: 'approval'
+      - address: '0xce52b7cc490523b3e81c3076d5ae5cca9a3e2d6f'
+        name: 'optimistic'
+  ptc:
+    address: '0xCE52b7cc490523B3e81C3076D5ae5Cca9a3e2D6F'
+    proposal_label_map:
+      '0': 'STANDARD'
+      '1': 'APPROVAL'
+      '2': 'OPTIMISTIC'
+  alligator: 
+    address: '0x7f08F3095530B67CdF8466B7a923607944136Df0'
+  rpc: 'https://mainnet.optimism.io'
+  start_block: 135964987
+  end_block: 136994987

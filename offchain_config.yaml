@@ -1,0 +1,16 @@
+
+
+
+test:
+  chain_id: 11155111
+  
+  votes_eas: 'https://sepolia.easscan.org/graphql'
+  prop_eas: 'https://optimism-sepolia.easscan.org/graphql'
+  
+
+main:
+  chain_id: 10
+
+  votes_eas: 'https://optimism.easscan.org/graphql'
+  prop_eas: 'https://optimism.easscan.org/graphql'
+
