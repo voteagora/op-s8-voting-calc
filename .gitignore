@@ -33,3 +33,5 @@ env/
 
 # Project specific
 op_s8_vote_calc/_version.py
+op_s8_vote_calc/data
+op_s8_vote_calc/config
