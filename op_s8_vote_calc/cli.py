@@ -87,8 +87,6 @@ def download_onchain_data(env='main'):
  
 
 def download_offchain_data(env='main'):
-    """Download EAS data for the specified environment"""
-    click.echo(f"Downloading EAS data for {env} environment")
 
     _, config = load_config(env)
 
@@ -110,7 +108,7 @@ def download_offchain_data(env='main'):
 
         schema = client.get_schemas(schema_meta.schema_id)[0]
 
-        print(schema_meta.name)
+        # print(schema_meta.name)
 
         try:
             pprint(schema['schema'])
@@ -147,15 +145,13 @@ def download_offchain_data(env='main'):
 
 
 def list_proposals(env='main'):
-    """List all available proposals"""
-    click.echo("Listing all proposals")
 
     prop_lister = ProposalLister.load(env)
     prop_lister.list_proposals()
 
+    return prop_lister
+
 def calculate(proposal_id: str, env='main'):
-    """Calculate result for a specific proposal"""
-    click.echo(f"\nCalculating result for proposal {proposal_id}")
 
     on_chain_config, off_chain_config = load_config(env)
 
@@ -170,6 +166,8 @@ def calculate(proposal_id: str, env='main'):
         prop.load_offchain_context(env)
     
     prop.show_result()
+
+    return prop
 
 def main():
 

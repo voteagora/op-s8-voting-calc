@@ -28,7 +28,7 @@ class EASGraphQLClient:
             "where": {"id": schema_id}
         }
 
-        print(f"Hitting: {self.url}")
+        # print(f"Hitting: {self.url}")
         resp = r.post(self.url, json={'query': QUERY , 'variables': VARIABLES})
         
         return [resp.json()['data']['getSchema']]
