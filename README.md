@@ -142,3 +142,36 @@ python cli.py list-proposals [test|main]
 ```bash
 python cli.py calculate-result [test|main] PROPOSAL_ID
 ```
+
+
+### Feature Support
+
+- [x] Beta Test Config
+- [ ] Final Test Config
+- [ ] Beta Main Config
+- [ ] Final Main Config
+
+- [ ] Dynamic Proposal Type Support
+- [ ] Citizen Wallet Changes
+
+Standard Proposals:
+ - [x] Onchain
+ - [x] Offchain
+ - [x] Hybrid
+
+Approval Proposals:
+ - [ ] Onchain
+ - [ ] Offchain
+ - [ ] Hybrid
+
+Optimistic Proposals:
+ - [ ] Onchain
+ - [ ] Offchain
+ - [ ] Hybrid
+
+Optimistic Tiered Proposals:
+ - [ ] Onchain
+ - [ ] Offchain
+ - [ ] Hybrid
+
+ 

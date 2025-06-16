@@ -196,7 +196,7 @@ class StandardTally:
             self.passing_quorum = self.quorum >= self.quorum_thresh_pct
             self.passing_approval_threshold = self.approval >= self.approval_thresh_pct
 
-    def print_tally(self, label, weight):
+    def gen_tally_report(self, label, weight=1):
 
         tally = f"{label} Tally"
         
@@ -251,7 +251,7 @@ class FinalTally:
         self.include_abstain = include_abstain
 
 
-    def print_tally(self, label):
+    def gen_tally_report(self, label):
 
         tally = f"{label} Tally\n"
         tally += "-" * (len(tally) - 1) + "\n"
@@ -284,19 +284,7 @@ class OffChain(Proposal):
         if 'tiers' in self.row:
             self.proposal_type_info['tiers'] = self.row['tiers']
 
-    def show_result(self):
-
-        print(self)
-
-        tallies = self.calculate_standard_tally()
-
-        for tally in tallies:
-            print(tally)
-        
-        final_tally = FinalTally(tallies, weights = [1/3, 1/3, 1/3])
-        print(final_tally)
-
-    def calculate_standard_tally(self):
+    def calculate_standard_tallies(self):
         
         assert self.proposal_type_label == 'STANDARD'
 
@@ -322,6 +310,30 @@ class OffChain(Proposal):
             tallies.append(tally)
         
         return tallies
+
+    def show_result(self):
+
+        weights = [1/3, 1/3, 1/3]
+
+        print()
+        print(self)
+        print()
+
+        tallies = self.calculate_standard_tallies()
+
+        print(tallies[0].gen_tally_report("Citizen House - Apps", weights[0]))
+        print(tallies[1].gen_tally_report("Citizen House - Users", weights[1]))
+        print(tallies[2].gen_tally_report("Citizen House - Chains", weights[2]))
+
+        quorum_thresh_pct = tallies[0].quorum_thresh_pct
+        approval_thresh_pct = tallies[0].approval_thresh_pct
+
+        for i, t in enumerate(tallies):
+            assert t.quorum_thresh_pct == quorum_thresh_pct, f"Quorum PCTs do not match: {t.quorum_thresh_pct} != {quorum_thresh_pct} for tally {i}"
+            assert t.approval_thresh_pct == approval_thresh_pct, f"Approval Threshold PCTs do not match: {t.approval_thresh_pct} != {approval_thresh_pct} for tally {i}"
+
+        final_tally = FinalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct)
+        print(final_tally.gen_tally_report("Final"))
 
 class OnChain(Proposal):
     emoji = '⛓️'
@@ -351,20 +363,22 @@ class OnChain(Proposal):
         votable_supply = self.votable_supply   
         assert quorum_thresh_pct == self.quorum / votable_supply
 
-        return [StandardTally(votable_supply, quorum_thresh_pct, approval_thresh_pct, against_votes, for_votes, abstain_votes, include_abstain=False)]
+        return StandardTally(votable_supply, quorum_thresh_pct, approval_thresh_pct, against_votes, for_votes, abstain_votes, include_abstain=False)
 
     def show_result(self):
 
+        weights = [1]
+
+        print()
         print(self)
+        print()
 
-        tallies = self.calculate_standard_tally()
+        tally = self.calculate_standard_tally()
 
-        for tally in tallies:
-            print(tally)
+        print(tally.gen_tally_report("Token House"))
         
-        final_tally = FinalTally(tallies, weights = [100])
-        print(final_tally)
-
+        final_tally = FinalTally([tally], weights = weights, quorum_thresh_pct = tally.quorum_thresh_pct, approval_thresh_pct = tally.approval_thresh_pct)
+        print(final_tally.gen_tally_report("Final"))
 
 class Hybrid(Proposal):
     emoji = '☯️'
@@ -395,15 +409,15 @@ class Hybrid(Proposal):
         print(self)
         print()
 
-        onc_tallies = self.on_chain_p.calculate_standard_tally()
-        offc_tallies = self.off_chain_p.calculate_standard_tally()
+        onc_tally = self.on_chain_p.calculate_standard_tally()
+        offc_tallies = self.off_chain_p.calculate_standard_tallies()
 
-        tallies = onc_tallies + offc_tallies
+        tallies = [onc_tally] + offc_tallies
 
-        print(tallies[0].print_tally("Token House", weights[0]))
-        print(tallies[1].print_tally("Citizen House - Apps", weights[1]))
-        print(tallies[2].print_tally("Citizen House - Users", weights[2]))
-        print(tallies[3].print_tally("Citizen House - Chains", weights[3]))
+        print(tallies[0].gen_tally_report("Token House", weights[0]))
+        print(tallies[1].gen_tally_report("Citizen House - Apps", weights[1]))
+        print(tallies[2].gen_tally_report("Citizen House - Users", weights[2]))
+        print(tallies[3].gen_tally_report("Citizen House - Chains", weights[3]))
 
         quorum_thresh_pct = tallies[0].quorum_thresh_pct
         approval_thresh_pct = tallies[0].approval_thresh_pct
@@ -413,7 +427,7 @@ class Hybrid(Proposal):
             assert t.approval_thresh_pct == approval_thresh_pct, f"Approval Threshold PCTs do not match: {t.approval_thresh_pct} != {approval_thresh_pct} for tally {i}"
 
         final_tally = FinalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct)
-        print(final_tally.print_tally("Final"))
+        print(final_tally.gen_tally_report("Final"))
     
     def load_offchain_context(self, env):
 
