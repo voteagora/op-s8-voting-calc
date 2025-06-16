@@ -125,22 +125,22 @@ The CLI provides the following commands:
 
 1. Download on-chain data:
 ```bash
-python cli.py download-onchain-data [test|main]
+python cli.py download-onchain-data -e [test|main]
 ```
 
 2. Download EAS data:
 ```bash
-python cli.py download-offchain-data [test|main]
+python cli.py download-offchain-data -e [test|main]
 ```
 
 3. List proposals:
 ```bash
-python cli.py list-proposals [test|main]
+python cli.py list-proposals -e [test|main]
 ```
 
 4. Calculate result for a specific proposal:
 ```bash
-python cli.py calculate-result [test|main] PROPOSAL_ID
+python cli.py calculate-result PROPOSAL_ID -e [test|main]
 ```
 
 

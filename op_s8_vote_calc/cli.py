@@ -1,4 +1,4 @@
-import click
+import argh
 import csv, os
 from pathlib import Path
 from yaml import load, FullLoader
@@ -26,16 +26,8 @@ import pandas as pd
 DATA_DIR = Path(os.getenv('S8_DATA_DIR', 'op_s8_vote_calc/data'))
 ABIS_DIR = Path(os.getenv('S8_ABIS_DIR', 'op_s8_vote_calc/abis'))
     
-@click.group()
-def cli():
-    """CLI tool for vote calculation"""
-    pass
 
-@cli.command()
-@click.argument('env', type=click.Choice(['test', 'main']))
 def download_onchain_data(env):
-    """Download on-chain data for the specified environment"""
-    click.echo(f"Downloading on-chain data for {env} environment")
 
     config, _ = load_config(env)
 
@@ -66,7 +58,10 @@ def download_onchain_data(env):
         
         (DATA_DIR / env).mkdir(parents=True, exist_ok=True)
 
-        fs = open(DATA_DIR / env / (signature + '.csv'), mode='w', newline='')
+        fname = DATA_DIR / env / (signature + '.csv')
+
+        fs = open(fname, mode='w', newline='')
+        print("Creating/Overwriting: " + fname)
         writer = csv.DictWriter(fs, fieldnames=field_names)
         writer.writeheader()
         writers[signature] = writer
@@ -89,11 +84,9 @@ def download_onchain_data(env):
             writer.writerow(event)
         else:
             writer.writerow(event)
+ 
 
-
-@cli.command()
-@click.argument('env', type=click.Choice(['test', 'main']), default='main')
-def download_offchain_data(env):
+def download_offchain_data(env='main'):
     """Download EAS data for the specified environment"""
     click.echo(f"Downloading EAS data for {env} environment")
 
@@ -126,8 +119,9 @@ def download_offchain_data(env):
             continue
 
         (DATA_DIR / env).mkdir(parents=True, exist_ok=True)
-
-        fs = open(DATA_DIR / env / (schema_meta.name + '.csv'), mode='w', newline='')
+        fname = DATA_DIR / env / (schema_meta.name + '.csv')
+        fs = open(fname, mode='w', newline='')
+        print("Creating/Overwriting: " + fname)
         writer = csv.DictWriter(fs, fieldnames=eas_meta + list(schema_meta.kwtypes.keys()))
         writer.writeheader()
 
@@ -151,19 +145,15 @@ def download_offchain_data(env):
             
             writer.writerow(attestation)
 
-@cli.command()
-@click.argument('env', type=click.Choice(['test', 'main']), default='main')
-def list_proposals(env):
+
+def list_proposals(env='main'):
     """List all available proposals"""
     click.echo("Listing all proposals")
 
     prop_lister = ProposalLister.load(env)
     prop_lister.list_proposals()
 
-@cli.command()
-@click.argument('env', type=click.Choice(['test', 'main']), default='main')
-@click.argument('proposal_id')
-def calculate(env, proposal_id):
+def calculate(proposal_id: str, env='main'):
     """Calculate result for a specific proposal"""
     click.echo(f"\nCalculating result for proposal {proposal_id}")
 
@@ -182,8 +172,9 @@ def calculate(env, proposal_id):
     prop.show_result()
 
 def main():
-    """Entry point for the ops8vote command-line tool"""
-    cli()
+
+    argh.dispatch_commands([download_onchain_data, download_offchain_data, list_proposals, calculate])
+
 
 if __name__ == '__main__':
     main()
