@@ -35,7 +35,10 @@ def download_onchain_data(env='main'):
     token_address= config['token']['address']
     chain_id = config['chain_id']
 
-    rpc = config['rpc']
+    rpc = os.getenv('S8_JSON_RPC', config['rpc'])
+
+    if rpc is None:
+        raise Exception("S8_JSON_RPC environment variable is not set")
 
     client = JsonRpcHistHttpClient(rpc)
     client.connect()
@@ -160,7 +163,13 @@ def calculate(proposal_id: str, env='main'):
     prop = prop_lister.get_proposal(proposal_id)
 
     if isinstance(prop, (Hybrid, OnChain)):
-        w3 = Web3(Web3.HTTPProvider(on_chain_config['rpc']))
+
+        rpc = os.getenv('S8_JSON_RPC', on_chain_config['rpc'])
+
+        if rpc is None:
+            raise Exception("S8_JSON_RPC environment variable is not set")
+        
+        w3 = Web3(Web3.HTTPProvider(rpc))
         prop.load_onchain_context(env, w3, on_chain_config['gov']['address'])
     
     if isinstance(prop, (Hybrid, OffChain)):
