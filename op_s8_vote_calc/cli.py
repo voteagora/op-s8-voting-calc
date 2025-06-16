@@ -14,7 +14,7 @@ from collections import defaultdict
 from eth_abi import decode
 
 from abifsm import ABISet, ABI
-from .utils import camel_to_snake
+from .utils import camel_to_snake, load_config
 
 from .signatures import *
 from .calc import *
@@ -24,18 +24,7 @@ from .attestations import meta as all_meta
 import pandas as pd
 
 DATA_DIR = Path('op_s8_vote_calc/data')
-CONFIG_DIR = Path('op_s8_vote_calc/config')
 ABIS_DIR = Path('op_s8_vote_calc/abis')
-
-def load_config(env):
-
-    with open(CONFIG_DIR / 'onchain_config.yaml', 'r') as f:
-        onchain_config = load(f, Loader=FullLoader)[env]
-    
-    with open(CONFIG_DIR / 'offchain_config.yaml', 'r') as f:
-        offchain_config = load(f, Loader=FullLoader)[env]
-
-    return onchain_config, offchain_config
     
 @click.group()
 def cli():
@@ -103,7 +92,7 @@ def download_onchain_data(env):
 
 
 @cli.command()
-@click.argument('env', type=click.Choice(['test', 'main']))
+@click.argument('env', type=click.Choice(['test', 'main']), default='main')
 def download_offchain_data(env):
     """Download EAS data for the specified environment"""
     click.echo(f"Downloading EAS data for {env} environment")
@@ -163,7 +152,7 @@ def download_offchain_data(env):
             writer.writerow(attestation)
 
 @cli.command()
-@click.argument('env', type=click.Choice(['test', 'main']))
+@click.argument('env', type=click.Choice(['test', 'main']), default='main')
 def list_proposals(env):
     """List all available proposals"""
     click.echo("Listing all proposals")
@@ -172,7 +161,7 @@ def list_proposals(env):
     prop_lister.list_proposals()
 
 @cli.command()
-@click.argument('env', type=click.Choice(['test', 'main']))
+@click.argument('env', type=click.Choice(['test', 'main']), default='main')
 @click.argument('proposal_id')
 def calculate(env, proposal_id):
     """Calculate result for a specific proposal"""

@@ -8,6 +8,7 @@ from copy import deepcopy
 
 from .jsonrpc_client import JsonRpcHistHttpClient
 from .graphqleas_client import EASGraphQLClient
+from .utils import load_config
 from web3 import Web3
 from collections import defaultdict
 
@@ -21,7 +22,7 @@ from .attestations import meta as all_meta
 
 import pandas as pd
 
-DATA_DIR = Path('data')
+DATA_DIR = Path('op_s8_vote_calc/data')
     
 
 class Proposal:
