@@ -27,7 +27,7 @@ DATA_DIR = Path(os.getenv('S8_DATA_DIR', 'op_s8_vote_calc/data'))
 ABIS_DIR = Path(os.getenv('S8_ABIS_DIR', 'op_s8_vote_calc/abis'))
     
 
-def download_onchain_data(env):
+def download_onchain_data(env='main'):
 
     config, _ = load_config(env)
 
@@ -61,7 +61,7 @@ def download_onchain_data(env):
         fname = DATA_DIR / env / (signature + '.csv')
 
         fs = open(fname, mode='w', newline='')
-        print("Creating/Overwriting: " + fname)
+        print("Creating/Overwriting: " + str(fname.absolute()))
         writer = csv.DictWriter(fs, fieldnames=field_names)
         writer.writeheader()
         writers[signature] = writer
@@ -121,7 +121,7 @@ def download_offchain_data(env='main'):
         (DATA_DIR / env).mkdir(parents=True, exist_ok=True)
         fname = DATA_DIR / env / (schema_meta.name + '.csv')
         fs = open(fname, mode='w', newline='')
-        print("Creating/Overwriting: " + fname)
+        print("Creating/Overwriting: " + str(fname.absolute()))
         writer = csv.DictWriter(fs, fieldnames=eas_meta + list(schema_meta.kwtypes.keys()))
         writer.writeheader()
 
