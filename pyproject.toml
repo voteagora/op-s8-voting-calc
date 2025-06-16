@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 dynamic = ["version"]
 dependencies = [
-    "click",
+    "argh",
     "requests",
     "web3",
     "abifsm @ git+https://github.com/voteagora/abifsm@master",

@@ -28,7 +28,11 @@ test:
       '2':
         friendly_name: 'OPTIMISTIC'
         onchain_name: 'Optimistic'
-
+      '3':
+        friendly_name: 'STANDARD'
+        onchain_name: 'JH - Standard'
+        quorum: 3000
+        approval_thresh: 6000
   alligator:
     address: '0x5d729d4c0BF5d0a2Fa0F801c6e0023BD450c4fd6'
   rpc: 'https://sepolia.optimism.io'

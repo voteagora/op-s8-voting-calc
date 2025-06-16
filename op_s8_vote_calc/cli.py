@@ -111,7 +111,8 @@ def download_offchain_data(env='main'):
         # print(schema_meta.name)
 
         try:
-            pprint(schema['schema'])
+            assert 'schema' in schema
+            #pprint(schema['schema'])
         except Exception as e:
             print(f"❌ Bad schema for {schema_meta.name} [id={schema_meta.schema_id}]")
             continue
