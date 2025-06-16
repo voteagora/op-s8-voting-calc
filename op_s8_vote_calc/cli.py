@@ -1,5 +1,5 @@
 import click
-import csv
+import csv, os
 from pathlib import Path
 from yaml import load, FullLoader
 from pprint import pprint
@@ -23,8 +23,8 @@ from .attestations import meta as all_meta
 
 import pandas as pd
 
-DATA_DIR = Path('op_s8_vote_calc/data')
-ABIS_DIR = Path('op_s8_vote_calc/abis')
+DATA_DIR = Path(os.getenv('S8_DATA_DIR', 'op_s8_vote_calc/data'))
+ABIS_DIR = Path(os.getenv('S8_ABIS_DIR', 'op_s8_vote_calc/abis'))
     
 @click.group()
 def cli():

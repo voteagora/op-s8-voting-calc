@@ -1,5 +1,5 @@
 import click
-import csv
+import csv, os
 from pathlib import Path
 from yaml import load, FullLoader
 from pprint import pprint
@@ -22,8 +22,7 @@ from .attestations import meta as all_meta
 
 import pandas as pd
 
-DATA_DIR = Path('op_s8_vote_calc/data')
-    
+DATA_DIR = Path(os.getenv('S8_DATA_DIR', 'op_s8_vote_calc/data'))
 
 class Proposal:
 

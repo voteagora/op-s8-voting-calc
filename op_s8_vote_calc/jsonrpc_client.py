@@ -217,8 +217,6 @@ class JsonRpcHistHttpClient(SubscriptionPlannerMixin):
             "topics": [event_signature_hash]
         }
 
-        print(event_filter)
-
         try:
             logs = w3.eth.get_logs(event_filter)
         except Exception as e:
