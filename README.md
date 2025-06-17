@@ -11,19 +11,34 @@ git clone https://github.com/voteagora/op-s8-voting-calc.git
 pip install -e .
 ```
 
-### Point at your Node
+### Point at your Node & Set Contract Deployment
 
 The git repo comes with a config file popupulated with test and main contract deployments.
 
 You'll need to change the RPC endpoints to your own node.
+
+You'll need to set the following environment variables:
+
+```bash
+export S8_DATA_DIR=/path/to/data
+export S8_DEPLOYMENT=test
+export S8_JSON_RPC=https://mainnet.optimism.io
+```
+
+And then, depending on your setup you might want to override...
+
+```bash
+export S8_CONFIG_DIR=/path/to/config
+export S8_ABIS_DIR=/path/to/abis
+```
 
 ### Download Data
 
 To download data for testnet:
 
 ```bash
-ops8vote download-onchain-data test
-ops8vote download-offchain-data test 
+ops8vote download-onchain-data
+ops8vote download-offchain-data
 ```
 
 To download data for mainnet...
@@ -33,14 +48,12 @@ ops8vote download-onchain-data
 ops8vote download-offchain-data
 ```
 
-Note the convention is that `main` is the default.
-
 ### List Proposals
 
 To list proposals for testnet:
 
 ```bash
-ops8vote list-proposals test
+ops8vote list-proposals
 ```
 
 ...should list output like this:
@@ -53,10 +66,10 @@ Off-chain proposals: 2
 ⛓️‍💥 APPROVAL: id=95647532391336425113284705305810426138679226160678387259848355019474222496950, title=# Sudheer: Test Approval Hybrid Proposal
 
 On-chain proposals: 12
-⛓️ STANDARD: id=14600090851423888673871144218032166327714904352414268808281169441053048962838, title=# [TEST] - pedro 2025-06-03
-⛓️ STANDARD: id=49313948667796903603360051850227879680520673392082756130951136683634837819266, title=# cancel basic proposal
-⛓️ STANDARD: id=32426287155913904840488684818334451818043191670420267452900409518566735216130, title=# basic proposal test test
-⛓️ STANDARD: id=107980623708671572031503393241994673286648883753261270183539274298960229801779, title=# [TEST] - Garrett - (hybrid-basic-default)
+⛓️ BASIC: id=14600090851423888673871144218032166327714904352414268808281169441053048962838, title=# [TEST] - pedro 2025-06-03
+⛓️ BASIC: id=49313948667796903603360051850227879680520673392082756130951136683634837819266, title=# cancel basic proposal
+⛓️ BASIC: id=32426287155913904840488684818334451818043191670420267452900409518566735216130, title=# basic proposal test test
+⛓️ BASIC: id=107980623708671572031503393241994673286648883753261270183539274298960229801779, title=# [TEST] - Garrett - (hybrid-basic-default)
 ⛓️ OPTIMISTIC: id=56834676367243609725554333961377273861955503468300131824545453547974825038258, title=# optimistic proposal test
 ⛓️ APPROVAL: id=8600146195258290332354057058134045663599751773456849155400214660349548074484, title=# Sudheer: test approval
 ⛓️ APPROVAL: id=52891225558001836125090117863746749148949199604573636273003710557410723970724, title=# Sudheer: test 2 approval
@@ -67,21 +80,21 @@ On-chain proposals: 12
 ⛓️ APPROVAL: id=49081122109348338420643191503268752102175318210025958297140660061189210432391, title=# Sudheer: Test Approval Hybrid Proposal
 
 Hybrid proposals: 1
-☯️ STANDARD: id=112542233745806009107871466048611490894875302937505011175151532497811941558355-42740012529150791772311325945937601588484139798594959324533215350132958331528, title=# Jeff - Hybrid + Basic + June 12 9:26 AM ET
+☯️ BASIC: id=112542233745806009107871466048611490894875302937505011175151532497811941558355-42740012529150791772311325945937601588484139798594959324533215350132958331528, title=# Jeff - Hybrid + Basic + June 12 9:26 AM ET
 ```
 
 ### Calculate a Specific Proposal's Result
 
 ```bash
-ops8vote calculate test 112542233745806009107871466048611490894875302937505011175151532497811941558355-42740012529150791772311325945937601588484139798594959324533215350132958331528
+ops8vote calculate 112542233745806009107871466048611490894875302937505011175151532497811941558355-42740012529150791772311325945937601588484139798594959324533215350132958331528
 ```
 
-Should output...
+Should output something like...
 
 ```
 Calculating result for proposal 112542233745806009107871466048611490894875302937505011175151532497811941558355-42740012529150791772311325945937601588484139798594959324533215350132958331528
 
-☯️ STANDARD: id=112542233745806009107871466048611490894875302937505011175151532497811941558355-42740012529150791772311325945937601588484139798594959324533215350132958331528, title=# Jeff - Hybrid + Basic + June 12 9:26 AM ET
+☯️ BASIC: id=112542233745806009107871466048611490894875302937505011175151532497811941558355-42740012529150791772311325945937601588484139798594959324533215350132958331528, title=# Jeff - Hybrid + Basic + June 12 9:26 AM ET
 
 Token House Tally [50.00% of Final]
 -----------------------------------
@@ -118,6 +131,26 @@ Against: (33.3% of total | 0.2% of eligible)
 Quorum: 4.714% ❌ (30%), Approval: 50.000% ❌ (51%) -> ❌ DEFEATED
 ```
 
+And an example approval proposal...
+
+```
+⛓️ APPROVAL: id=21837554113321175128753313420738380328565785926226611271713131734865736260549, title=# Rolling Mission Requests: Voting Cycle 27
+
+Token House Tally
+-----------------
+Given 46938802908591101013645634 total votes, and 96501702642209702712786254 eligible votes... 
+Abstain: 6515768095338571250010090 (13.9% of total | 6.8% of eligible)
+For: 31431910661813432620160489 ✅ (67.0% of total | 32.6% of eligible)
+For: 35035962495117270703561571 ✅ (74.6% of total | 36.3% of eligible)
+For: 17033284171118898054256072 ❌ (36.3% of total | 17.7% of eligible)
+For: 17663853612321229474897508 ❌ (37.6% of total | 18.3% of eligible)
+For: 24934837283900123569914475 ✅ (53.1% of total | 25.8% of eligible)
+For: 28476520065880757383430022 ✅ (60.7% of total | 29.5% of eligible)
+For: 23272354186448414025424072 ❌ (49.6% of total | 24.1% of eligible)
+For: 21779420495943287974126505 ❌ (46.4% of total | 22.6% of eligible)
+Quorum: 48.64% ✅ (30%)
+```
+
 
 ## Summary of Usage
 
@@ -125,22 +158,22 @@ The CLI provides the following commands:
 
 1. Download on-chain data:
 ```bash
-python cli.py download-onchain-data -e [test|main]
+python cli.py download-onchain-data
 ```
 
 2. Download EAS data:
 ```bash
-python cli.py download-offchain-data -e [test|main]
+python cli.py download-offchain-data
 ```
 
 3. List proposals:
 ```bash
-python cli.py list-proposals -e [test|main]
+python cli.py list-proposals
 ```
 
 4. Calculate result for a specific proposal:
 ```bash
-python cli.py calculate-result PROPOSAL_ID -e [test|main]
+python cli.py calculate-result $PROPOSAL_ID
 ```
 
 
@@ -151,16 +184,18 @@ python cli.py calculate-result PROPOSAL_ID -e [test|main]
 - [ ] Beta Main Config
 - [ ] Final Main Config
 
-- [ ] Dynamic Proposal Type Support
+- [x] Dynamic Proposal Type Support - The idea that proposal types are point-in-time aware, based on the proposal start time.
+- [x] calculationOptions Support - allowing toggling of "include abstain" in basic tallies.
+- [x] Citizen Registration Status (ie, unrevoked)
 - [ ] Citizen Wallet Changes
 
-Standard Proposals:
+Basic Proposals:
  - [x] Onchain
  - [x] Offchain
  - [x] Hybrid
 
 Approval Proposals:
- - [ ] Onchain
+ - [x] Onchain
  - [ ] Offchain
  - [ ] Hybrid
 

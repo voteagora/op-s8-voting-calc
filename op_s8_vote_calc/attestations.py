@@ -47,7 +47,7 @@ class Vote(AttestionMeta):
 
 class CreateProposal(AttestionMeta):
     def __init__(self, schema_id):
-        super().__init__(schema_id, contract='address', id='uint256', proposer='address', description='string', choices='string[]', proposal_type_id='uint8', start_block='uint256', end_block='uint256', proposal_type='string', tiers='uint256[]', onchain_proposalid='uint256')
+        super().__init__(schema_id, contract='address', proposalId='uint256', proposer='address', description='string', choices='string[]', proposal_type_id='uint8', start_block='uint256', end_block='uint256', proposal_type='string', tiers='uint256[]', onchain_proposalid='uint256', max_approvals='uint8', criteria='uint8', criteria_value='uint128', calculation_options='uint8')
 
 
 meta = {}
@@ -55,9 +55,10 @@ meta = {}
 meta['test'] = {
     'citizen': Citizens('0x754160df7a4bd6ecf7e8801d54831a5d33403b4d52400e87d7611ee0eee6de23'),
     'citizen_wallet_change': CitizenWalletChange('0x3acfc8404d72c7112ef6f957f0fcf0a5c3e026b586c101ea25355d4666a00362'),
-    'vote': Vote('0xe55f129f30d55bd712c8355141474f886a9d38f218d94b0d63a00e73c6d65a09'),
+    'vote': Vote('0xec3674d93b7007e918cf91ddd44bd14f28d138a4e7f3a79214dc35da2aed794e'),
     # 'create_proposal': CreateProposal('0xc2d307e00cc97b07606361c49971814ed50e20b080a0fb7a3c9c94c224463539')
-    'create_proposal': CreateProposal('0x875845d42b7cb72da8d97c3442182b9a0ee302d4a8d661ee8b83f13bf1f8f38b')
+    # 'create_proposal': CreateProposal('0x875845d42b7cb72da8d97c3442182b9a0ee302d4a8d661ee8b83f13bf1f8f38b')
+    'create_proposal': CreateProposal('0x590765de6f34bbae3e51aa89e571f567fa6d63cf3f8225592d58133860a0ccda') # Adds calculationOptions
 }
 
 meta['main'] = {
