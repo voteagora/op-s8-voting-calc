@@ -14,10 +14,11 @@ from collections import defaultdict
 from eth_abi import decode
 
 from abifsm import ABISet, ABI
-from .utils import camel_to_snake, load_config
+from .utils import camel_to_snake, load_config, get_web3
 
 from .signatures import *
 from .calc import *
+from .jsonrpc_client import JsonRpcContractCalls
 
 from .attestations import meta as all_meta
 
@@ -25,11 +26,12 @@ import pandas as pd
 
 DATA_DIR = Path(os.getenv('S8_DATA_DIR', 'op_s8_vote_calc/data'))
 ABIS_DIR = Path(os.getenv('S8_ABIS_DIR', 'op_s8_vote_calc/abis'))
+DEPLOYMENT = os.getenv('S8_DEPLOYMENT', 'test')
     
 
-def download_onchain_data(env='main'):
+def download_onchain_data():
 
-    config, _ = load_config(env)
+    config, _ = load_config()
 
     gov_address= config['gov']['address']
     token_address= config['token']['address']
@@ -43,7 +45,7 @@ def download_onchain_data(env='main'):
     client = JsonRpcHistHttpClient(rpc)
     client.connect()
 
-    abi = ABI.from_file('gov', ABIS_DIR / env / 'gov.json')
+    abi = ABI.from_file('gov', ABIS_DIR / DEPLOYMENT / 'gov.json')
     abis = ABISet('op', [abi])
 
     client.set_abis(abis)
@@ -59,9 +61,9 @@ def download_onchain_data(env='main'):
     for signature in signatures:
         field_names = meta + list(map(camel_to_snake, abis.get_by_signature(signature).fields))
         
-        (DATA_DIR / env).mkdir(parents=True, exist_ok=True)
+        (DATA_DIR / DEPLOYMENT).mkdir(parents=True, exist_ok=True)
 
-        fname = DATA_DIR / env / (signature + '.csv')
+        fname = DATA_DIR / DEPLOYMENT / (signature + '.csv')
 
         fs = open(fname, mode='w', newline='')
         print("Creating/Overwriting: " + str(fname.absolute()))
@@ -89,11 +91,11 @@ def download_onchain_data(env='main'):
             writer.writerow(event)
  
 
-def download_offchain_data(env='main'):
+def download_offchain_data():
 
-    _, config = load_config(env)
+    _, config = load_config()
 
-    meta = all_meta[env]
+    meta = all_meta[DEPLOYMENT]
 
     vote_client = EASGraphQLClient(config['votes_eas'])
     prop_client = EASGraphQLClient(config['prop_eas'])
@@ -120,8 +122,8 @@ def download_offchain_data(env='main'):
             print(f"❌ Bad schema for {schema_meta.name} [id={schema_meta.schema_id}]")
             continue
 
-        (DATA_DIR / env).mkdir(parents=True, exist_ok=True)
-        fname = DATA_DIR / env / (schema_meta.name + '.csv')
+        (DATA_DIR / DEPLOYMENT).mkdir(parents=True, exist_ok=True)
+        fname = DATA_DIR / DEPLOYMENT / (schema_meta.name + '.csv')
         fs = open(fname, mode='w', newline='')
         print("Creating/Overwriting: " + str(fname.absolute()))
         writer = csv.DictWriter(fs, fieldnames=eas_meta + list(schema_meta.kwtypes.keys()))
@@ -147,41 +149,87 @@ def download_offchain_data(env='main'):
             
             writer.writerow(attestation)
 
+def download_proposal_context():
 
-def list_proposals(env='main'):
+    on_chain_config, off_chain_config = load_config()
+    modules = {v['address'].lower() : v['name'] for v in on_chain_config['gov']['modules']}
 
-    prop_lister = ProposalLister.load(env)
+    onchain_creates_2 = pd.read_csv(DATA_DIR / DEPLOYMENT / (PROPOSAL_CREATED_2 + '.csv'))
+    onchain_creates_4 = pd.read_csv(DATA_DIR / DEPLOYMENT / (PROPOSAL_CREATED_4 + '.csv'))
+    onchain_creates = pd.concat([onchain_creates_2, onchain_creates_4])
+    onchain_records = onchain_creates.iterrows()
+
+    offchain_creates = pd.read_csv(DATA_DIR / DEPLOYMENT / 'CreateProposal.csv')
+    offchain_records = offchain_creates.iterrows()
+
+    w3 = get_web3()    
+    jrpc = JsonRpcContractCalls(w3)
+
+
+    for idx, row in list(onchain_records) + list(offchain_records):
+
+        asof_block_num = row['start_block']
+        
+        if 'proposal_id' in row:
+            proposal_id = row['proposal_id']
+            proposal_type_id = row['proposal_type']
+            onchain_proposal_id = proposal_id
+            tech = "onchain"
+        elif 'id' in row:
+            proposal_id = row['id']
+            proposal_type_id = row['proposal_type_id']
+            onchain_proposal_id = row['onchain_proposalid']
+            tech = "offchain"
+        else:
+            raise Exception(f"❌ Bad record: {row}")
+        
+
+        if int(onchain_proposal_id) == 0:
+            quorum = None
+            votable_supply = None
+            proposal_type_info = jrpc.get_proposal_type_info(onchain_config['ptc']['address'], proposal_type_id, asof_block_num)
+        else:
+            quorum = jrpc.get_quorum(onchain_config['gov']['address'], proposal_id)
+            votable_supply = jrpc.get_votable_supply(onchain_config['gov']['address'], asof_block_num)
+            proposal_type_info = jrpc.get_proposal_type_info(onchain_config['ptc']['address'], proposal_type_id, asof_block_num)
+        
+        proposal_type_info['module_name'] = modules.get(proposal_type_info['module'].lower(), 'unknown')
+
+        out = {'proposal_id': proposal_id, 
+                'asof_block_num': asof_block_num, 
+                'proposal_type_id': proposal_type_id, 
+                'quorum': quorum, 
+                'votable_supply': votable_supply, 
+                'proposal_type_info': proposal_type_info}
+
+        fname = DATA_DIR / DEPLOYMENT / (proposal_id + '.json')
+
+        fname.parent.mkdir(parents=True, exist_ok=True)
+
+        fs = open(fname, mode='w', newline='')
+        json.dump(out, fs, indent=2)
+        fs.close()
+
+
+def list_proposals():
+
+    prop_lister = ProposalLister.load()
     prop_lister.list_proposals()
 
     return prop_lister
 
-def calculate(proposal_id: str, env='main'):
+def calculate(proposal_id: str):
 
-    on_chain_config, off_chain_config = load_config(env)
-
-    prop_lister = ProposalLister.load(env)
+    prop_lister = ProposalLister.load()
     prop = prop_lister.get_proposal(proposal_id)
-
-    if isinstance(prop, (Hybrid, OnChain)):
-
-        rpc = os.getenv('S8_JSON_RPC', on_chain_config['rpc'])
-
-        if rpc is None:
-            raise Exception("S8_JSON_RPC environment variable is not set")
-        
-        w3 = Web3(Web3.HTTPProvider(rpc))
-        prop.load_onchain_context(env, w3, on_chain_config['gov']['address'])
-    
-    if isinstance(prop, (Hybrid, OffChain)):
-        prop.load_offchain_context(env)
-    
+    prop.load_context()
     prop.show_result()
 
     return prop
 
 def main():
 
-    argh.dispatch_commands([download_onchain_data, download_offchain_data, list_proposals, calculate])
+    argh.dispatch_commands([download_onchain_data, download_offchain_data, download_proposal_context, list_proposals, calculate])
 
 
 if __name__ == '__main__':

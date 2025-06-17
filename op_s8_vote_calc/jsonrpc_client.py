@@ -305,3 +305,112 @@ class JsonRpcHistHttpClient(SubscriptionPlannerMixin):
 
         for log in all_logs:
             yield log
+
+
+class JsonRpcContractCalls:
+
+    def __init__(self, w3):
+        self.w3 = w3
+    
+    def get_quorum(self, gov_address, onchain_proposal_id):
+
+        contract_abi = [
+            {
+                "constant": True,
+                "inputs": [{"name": "proposal_id", "type": "uint256"}],
+                "name": "quorum",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "payable": False,
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ]
+
+        # Create a contract instance
+        contract = self.w3.eth.contract(address=gov_address, abi=contract_abi)
+        return contract.functions.quorum(int(onchain_proposal_id)).call()
+    
+    def get_votable_supply(self, gov_address, start_block_number):
+
+        contract_abi = [
+            {
+                "constant": True,
+                "inputs": [{"name": "block_number", "type": "uint256"}],
+                "name": "votableSupply",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "payable": False,
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ]
+
+        # Create a contract instance
+        contract = self.w3.eth.contract(address=gov_address, abi=contract_abi)
+
+        self.votable_supply = contract.functions.votableSupply(int(start_block_number)).call()
+        return self.votable_supply
+
+    def get_proposal_type_info(self, ptc_address, proposal_type_id, start_block_number):
+
+        contract_abi = [
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint8",
+                        "name": "proposalTypeId",
+                        "type": "uint8"
+                    }
+                ],
+                "name": "proposalTypes",
+                "outputs": [
+                    {
+                        "components": [
+                            {
+                                "internalType": "uint16",
+                                "name": "quorum",
+                                "type": "uint16"
+                            },
+                            {
+                                "internalType": "uint16",
+                                "name": "approvalThreshold",
+                                "type": "uint16"
+                            },
+                            {
+                                "internalType": "string",
+                                "name": "name",
+                                "type": "string"
+                            },
+                            {
+                                "internalType": "string",
+                                "name": "description",
+                                "type": "string"
+                            },
+                            {
+                                "internalType": "address",
+                                "name": "module",
+                                "type": "address"
+                            }
+                        ],
+                        "internalType": "struct IProposalTypesConfigurator.ProposalType",
+                        "name": "",
+                        "type": "tuple"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ]
+
+        contract = self.w3.eth.contract(address=ptc_address, abi=contract_abi)
+
+        proposal_type_info = contract.functions.proposalTypes(int(proposal_type_id)).call(block_identifier=start_block_number)
+        
+        proposal_type_info = {
+            'quorum_bps': proposal_type_info[0],
+            'approval_threshold_bps': proposal_type_info[1],
+            'name': proposal_type_info[2],
+            'description': proposal_type_info[3],
+            'module': proposal_type_info[4]
+            }
+
+        return proposal_type_info
