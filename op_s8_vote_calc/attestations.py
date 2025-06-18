@@ -57,7 +57,8 @@ meta['test'] = {
     'citizen_wallet_change': CitizenWalletChange('0x3acfc8404d72c7112ef6f957f0fcf0a5c3e026b586c101ea25355d4666a00362'),
     'vote': Vote('0xe55f129f30d55bd712c8355141474f886a9d38f218d94b0d63a00e73c6d65a09'),
     # 'create_proposal': CreateProposal('0xc2d307e00cc97b07606361c49971814ed50e20b080a0fb7a3c9c94c224463539')
-    'create_proposal': CreateProposal('0x875845d42b7cb72da8d97c3442182b9a0ee302d4a8d661ee8b83f13bf1f8f38b')
+    # 'create_proposal': CreateProposal('0x875845d42b7cb72da8d97c3442182b9a0ee302d4a8d661ee8b83f13bf1f8f38b')
+    'create_proposal': CreateProposal('0x590765de6f34bbae3e51aa89e571f567fa6d63cf3f8225592d58133860a0ccda') # Adds calculationOptions
 }
 
 meta['main'] = {

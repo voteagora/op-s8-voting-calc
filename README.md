@@ -151,7 +151,8 @@ python cli.py calculate-result PROPOSAL_ID -e [test|main]
 - [ ] Beta Main Config
 - [ ] Final Main Config
 
-- [ ] Dynamic Proposal Type Support
+- [x] Dynamic Proposal Type Support - The idea that proposal types are point-in-time aware, based on the proposal start time.
+- [ ] calculationOptions Support - allowing toggling of "include abstain" in standard tallies.
 - [ ] Citizen Wallet Changes
 
 Standard Proposals:
@@ -160,7 +161,7 @@ Standard Proposals:
  - [x] Hybrid
 
 Approval Proposals:
- - [ ] Onchain
+ - [x] Onchain
  - [ ] Offchain
  - [ ] Hybrid
 

@@ -401,9 +401,10 @@ class JsonRpcContractCalls:
             }
         ]
 
+
         contract = self.w3.eth.contract(address=ptc_address, abi=contract_abi)
 
-        proposal_type_info = contract.functions.proposalTypes(int(proposal_type_id)).call(block_identifier=start_block_number)
+        proposal_type_info = contract.functions.proposalTypes(int(proposal_type_id)).call() #block_identifier=start_block_number)
         
         proposal_type_info = {
             'quorum_bps': proposal_type_info[0],

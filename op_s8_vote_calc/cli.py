@@ -159,7 +159,10 @@ def download_proposal_context():
     onchain_creates = pd.concat([onchain_creates_2, onchain_creates_4])
     onchain_records = onchain_creates.iterrows()
 
-    offchain_creates = pd.read_csv(DATA_DIR / DEPLOYMENT / 'CreateProposal.csv')
+    try:
+        offchain_creates = pd.read_csv(DATA_DIR / DEPLOYMENT / 'CreateProposal.csv')
+    except FileNotFoundError:
+        offchain_creates = pd.DataFrame()
     offchain_records = offchain_creates.iterrows()
 
     w3 = get_web3()    
@@ -193,7 +196,11 @@ def download_proposal_context():
             votable_supply = jrpc.get_votable_supply(onchain_config['gov']['address'], asof_block_num)
             proposal_type_info = jrpc.get_proposal_type_info(onchain_config['ptc']['address'], proposal_type_id, asof_block_num)
         
-        proposal_type_info['module_name'] = modules.get(proposal_type_info['module'].lower(), 'unknown')
+        if 'voting_module' in row:
+            proposal_type_info['module_name'] = modules.get(row['voting_module'].lower(), 'unknown')
+            proposal_type_info['module'] = row['voting_module']
+        else:
+            proposal_type_info['module_name'] = modules.get(proposal_type_info['module'].lower(), 'unknown')
 
         out = {'proposal_id': proposal_id, 
                 'asof_block_num': asof_block_num, 
@@ -224,8 +231,6 @@ def calculate(proposal_id: str):
     prop = prop_lister.get_proposal(proposal_id)
     prop.load_context()
     prop.show_result()
-
-    return prop
 
 def main():
 
