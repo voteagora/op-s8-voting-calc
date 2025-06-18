@@ -57,6 +57,7 @@ class Proposal:
         self.votable_supply = onchain_meta['votable_supply']
         self.asof_block_num = onchain_meta['asof_block_num']
         self.proposal_type_id = onchain_meta['proposal_type_id']
+        self.counting_mode = onchain_meta['counting_mode']
 
 def bte(x):
     return "✅" if x else "❌"
@@ -304,6 +305,9 @@ class OffChain(Proposal):
         self.offchain_proposal_id = self.row['id']
         self.id = self.offchain_proposal_id
         self.proposal_type_id = self.row['proposal_type_id']
+        self.calculation_options = self.row.get('calculation_options', 0)
+        assert self.calculation_options in [0, 1], f"Invalid calculation options: {self.calculation_options}"
+        self.include_abstain = self.calculation_options == 0
 
         self.proposal_type_info = {}
         
@@ -358,7 +362,7 @@ class OffChain(Proposal):
 
             eligible_votes = self.ch_counts[category]
             
-            tally = StandardTally(eligible_votes, quorum_thresh_pct, approval_thresh_pct, cat_counts[0], cat_counts[1], cat_counts[2], include_abstain=False)
+            tally = StandardTally(eligible_votes, quorum_thresh_pct, approval_thresh_pct, cat_counts[0], cat_counts[1], cat_counts[2], include_abstain=self.include_abstain)
             tallies.append(tally)
         
         return tallies
@@ -384,7 +388,7 @@ class OffChain(Proposal):
             assert t.quorum_thresh_pct == quorum_thresh_pct, f"Quorum PCTs do not match: {t.quorum_thresh_pct} != {quorum_thresh_pct} for tally {i}"
             assert t.approval_thresh_pct == approval_thresh_pct, f"Approval Threshold PCTs do not match: {t.approval_thresh_pct} != {approval_thresh_pct} for tally {i}"
 
-        final_tally = FinalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct)
+        final_tally = FinalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct, include_abstain=self.include_abstain)
         print(final_tally.gen_tally_report("Final"))
 
 class OnChain(Proposal):
@@ -395,6 +399,8 @@ class OnChain(Proposal):
         self.onchain_proposal_id = self.id
 
         self.load_meta()
+
+        self.include_abstain = 'abstain' in self.counting_mode
 
     def load_context(self):
 
@@ -423,7 +429,7 @@ class OnChain(Proposal):
         votable_supply = self.votable_supply   
         assert quorum_thresh_pct == self.quorum / votable_supply
 
-        return StandardTally(votable_supply, quorum_thresh_pct, approval_thresh_pct, against_votes, for_votes, abstain_votes, include_abstain=False)
+        return StandardTally(votable_supply, quorum_thresh_pct, approval_thresh_pct, against_votes, for_votes, abstain_votes, include_abstain=self.include_abstain)
 
     def calculate_approval_tally(self):
         
@@ -519,7 +525,10 @@ class Hybrid(Proposal):
 
         self.on_chain_p = OnChain(on_chain)
         self.on_chain = on_chain.to_dict()
-        
+
+        assert self.off_chain_p.include_abstain == self.on_chain_p.include_abstain
+        self.include_abstain = self.off_chain_p.include_abstain
+
         self.onchain_proposal_id = self.on_chain_p.id
         self.offchain_proposal_id = self.off_chain_p.id
 
@@ -556,7 +565,7 @@ class Hybrid(Proposal):
             assert t.quorum_thresh_pct == quorum_thresh_pct, f"Quorum PCTs do not match: {t.quorum_thresh_pct} != {quorum_thresh_pct} for tally {i}"
             assert t.approval_thresh_pct == approval_thresh_pct, f"Approval Threshold PCTs do not match: {t.approval_thresh_pct} != {approval_thresh_pct} for tally {i}"
 
-        final_tally = FinalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct)
+        final_tally = FinalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct, include_abstain=self.include_abstain)
         print(final_tally.gen_tally_report("Final"))
     
     def load_context(self):

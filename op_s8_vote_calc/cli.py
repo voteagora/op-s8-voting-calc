@@ -191,12 +191,18 @@ def download_proposal_context():
             quorum = None
             votable_supply = None
             proposal_type_info = jrpc.get_proposal_type_info(onchain_config['ptc']['address'], proposal_type_id, asof_block_num)
+            counting_mode = jrpc.get_counting_mode(onchain_config['gov']['address'], asof_block_num)
         else:
             quorum = jrpc.get_quorum(onchain_config['gov']['address'], proposal_id)
             votable_supply = jrpc.get_votable_supply(onchain_config['gov']['address'], asof_block_num)
             proposal_type_info = jrpc.get_proposal_type_info(onchain_config['ptc']['address'], proposal_type_id, asof_block_num)
+            counting_mode = jrpc.get_counting_mode(onchain_config['gov']['address'], asof_block_num)
         
         if 'voting_module' in row:
+
+            if pd.isna(row['voting_module']):
+                row['voting_module'] = '0x0000000000000000000000000000000000000000'
+            
             proposal_type_info['module_name'] = modules.get(row['voting_module'].lower(), 'unknown')
             proposal_type_info['module'] = row['voting_module']
         else:
@@ -206,6 +212,7 @@ def download_proposal_context():
                 'asof_block_num': asof_block_num, 
                 'proposal_type_id': proposal_type_id, 
                 'quorum': quorum, 
+                'counting_mode': counting_mode,
                 'votable_supply': votable_supply, 
                 'proposal_type_info': proposal_type_info}
 

@@ -350,6 +350,25 @@ class JsonRpcContractCalls:
         self.votable_supply = contract.functions.votableSupply(int(start_block_number)).call()
         return self.votable_supply
 
+    def get_counting_mode(self, gov_address, start_block_number):
+
+        contract_abi = [
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "COUNTING_MODE",
+                "outputs": [{"name": "", "type": "string"}],
+                "payable": False,
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ]
+
+        contract = self.w3.eth.contract(address=gov_address, abi=contract_abi)
+
+        self.counting_mode = contract.functions.COUNTING_MODE().call(block_identifier=start_block_number)
+        return self.counting_mode
+
     def get_proposal_type_info(self, ptc_address, proposal_type_id, start_block_number):
 
         contract_abi = [
