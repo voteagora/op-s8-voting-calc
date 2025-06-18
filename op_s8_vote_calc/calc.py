@@ -321,7 +321,7 @@ class OffChain(Proposal):
     def load_context(self):
 
         # Assumed hard-coded for now.
-        self.ch_counts = {'apps' : 100, 'users': 10000, 'chains' : 15}
+        self.ch_counts = {'apps' : 100, 'users': 1000, 'chains' : 15}
 
         citizens = pd.read_csv(DATA_DIR / DEPLOYMENT / "Citizens.csv")
 
