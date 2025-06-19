@@ -186,6 +186,7 @@ python cli.py calculate-result $PROPOSAL_ID
 
 - [x] Dynamic Proposal Type Support - The idea that proposal types are point-in-time aware, based on the proposal start time.
 - [x] calculationOptions Support - allowing toggling of "include abstain" in standard tallies.
+- [x] Citizen Registration Status (ie, unrevoked)
 - [ ] Citizen Wallet Changes
 
 Standard Proposals:

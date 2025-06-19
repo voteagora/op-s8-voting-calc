@@ -321,24 +321,33 @@ class OffChain(Proposal):
     def load_context(self):
 
         # Assumed hard-coded for now.
-        self.ch_counts = {'apps' : 100, 'users': 1000, 'chains' : 15}
+        self.ch_counts = {'app' : 100, 'user': 1000, 'chain' : 15}
 
         citizens = pd.read_csv(DATA_DIR / DEPLOYMENT / "Citizens.csv")
 
         # Filter out non-compliant attestations.
         citizens = citizens[citizens['SelectionMethod'].isin(['5.1', '5.2', '5.3'])]
-        citizens['SelectionMethod'] = citizens['SelectionMethod'].map({'5.1': 'apps', '5.2': 'users', '5.3': 'chains'})
+        citizens['SelectionMethod'] = citizens['SelectionMethod'].map({'5.1': 'chain', '5.2': 'app', '5.3': 'user'})
  
         df = pd.read_csv(DATA_DIR / DEPLOYMENT / 'Vote.csv')
 
-        self.offc_votes = df[df['proposalId'] == self.offchain_proposal_id]
-        self.offc_votes['support'] = self.offc_votes['params'].apply(lambda x: json.loads(x)[0])
-        self.offc_votes['weight'] = 1
+        offc_votes = df[df['proposalId'] == self.offchain_proposal_id].copy()
+        offc_votes['support'] = offc_votes['params'].apply(lambda x: json.loads(x)[0])
+        offc_votes['weight'] = 1
 
-        self.offc_votes = self.offc_votes[['attester', 'support', 'weight']]
+        offc_votes = offc_votes[offc_votes['refUID'].isin(citizens[~citizens['revoked']]['id'])].copy()
 
-        self.offc_votes = self.offc_votes.merge(citizens, on='attester')
+        if offc_votes.duplicated(subset=['refUID']).any():
+            raise ValueError("Duplicates found in offc_votes.refUID.")
 
+        if citizens.duplicated(subset=['id']).any():
+            raise ValueError("Duplicates found in citizens.id.")
+
+        offc_votes_with_citizens = offc_votes.merge(citizens, left_on='refUID', right_on='id', how='inner', validate='one_to_one')
+
+        offc_votes_with_citizens = offc_votes_with_citizens[['SelectionMethod', 'support', 'weight']].copy()
+
+        self.offc_votes = offc_votes_with_citizens        
 
     def calculate_standard_tallies(self):
         
@@ -354,7 +363,7 @@ class OffChain(Proposal):
 
         tallies = []
 
-        for category in ['apps', 'users', 'chains']:
+        for category in ['app', 'user', 'chain']:
             cat_counts = counts.get(category, empty).to_dict(into=defaultdict(int))
 
             approval_thresh_pct = (self.proposal_type_info['approval_threshold_bps'] / 10000)
