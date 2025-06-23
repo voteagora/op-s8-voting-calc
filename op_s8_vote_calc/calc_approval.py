@@ -22,6 +22,7 @@ from .signatures import *
 from .attestations import meta as all_meta
 
 import pandas as pd
+import numpy as np
 
 DATA_DIR = Path(os.getenv('S8_DATA_DIR', 'op_s8_vote_calc/data'))
 DEPLOYMENT = os.getenv('S8_DEPLOYMENT', 'test')
@@ -94,12 +95,8 @@ class ApprovalTally:
             self.passing_approval_threshold = self.approval >= self.approval_thresh_pct
 
         else:
-            self.relative_for_pct = 0
-            self.relative_against_pct = 0
-            self.relative_abstain_pct = 0
-            self.absolute_for_pct = 0
-            self.absolute_against_pct = 0
-            self.absolute_abstain_pct = 0
+            self.relative_pct = {k : {support : 0 for support in [0, 1, 2]} for k in self.choice_tallies}
+            self.absolute_pct = {k : {support : 0 for support in [0, 1, 2]} for k in self.choice_tallies}
             self.quorum = 0
             self.approval = 0
 
@@ -214,7 +211,7 @@ class OnChainApprovalMixin:
     
         # pandas doesn't play nice with large ints.
         aggregated_support_vp = onc_votes[['support', 'weight']].groupby('support').apply(bigint_sum).to_dict()
-        aggregated_support_vp ={ k : int(v) for k, v in aggregated_support_vp.items()}
+        aggregated_support_vp = { k : int(v) for k, v in aggregated_support_vp.items()}
 
         final_dict = defaultdict(dict)
         for (param, support), value in counts.items():
@@ -259,60 +256,68 @@ class OffChainApprovalMixin:
         
         assert self.proposal_type_label == 'approval', f"Proposal type is not approval: {self.proposal_type_label}"
 
-        onc_votes = self.onc_votes.copy()
+        offc_votes = self.offc_votes.copy()
+        offc_votes['support'] = 1
 
-        def params_decode(arr):
-            try:
-                return decode_abi(["uint256[]"], bytes.fromhex(arr))[0]
-            except TypeError as e:
-                return [-1]
-
-        onc_votes['params'] = onc_votes['params'].apply(params_decode)
-
-        def bigint_sum(arr):
-            return str(sum([int(o) for o in arr.values]))
-
-        ballot_feed = onc_votes[['support', 'weight', 'params']].explode('params')
-
-        counts = ballot_feed.groupby(['params', 'support']).apply(bigint_sum)
-        totals = ballot_feed.groupby(['params'])['weight'].apply(bigint_sum).to_dict()
-    
-        aggregated_support_vp = onc_votes[['support', 'weight']].groupby('support').apply(bigint_sum).to_dict()
-        aggregated_support_vp = { k : int(v) for k, v in aggregated_support_vp.items()}
-
-        final_dict = defaultdict(dict)
-        for (param, support), value in counts.items():
-            final_dict[param][support] = value
-        counts = dict(final_dict)
-
-        """
-        At this point we have "counts" of the form...
-
-        {-1: {2: '6515768095338571250010090'},
-        0: {0: '48664653865959285301', 1: '31431910661813432620160489'},
-        1: {1: '35035962495117270703561571'},
-        2: {0: '48664653865959285301', 1: '17033284171118898054256072'},
-        3: {1: '17663853612321229474897508'},
-        4: {0: '48664653865959285301', 1: '24934837283900123569914475'},
-        5: {1: '28476520065880757383430022'},
-        6: {0: '48664653865959285301', 1: '23272354186448414025424072'},
-        7: {1: '21779420495943287974126505'}}
-
-        and "total" is of the form...  ...but unclear if we really need these.
-
-        {-1: '6515768095338571250010090', 0: '31431959326467298579445790', 1: '35035962495117270703561571', 2: '17033332835772764013541373', 3: '17663853612321229474897508', 4: '24934885948553989529199776', 5: '28476520065880757383430022', 6: '23272402851102279984709373', 7: '21779420495943287974126505'}
-
-        and "total voting vp" is of the form...
-
-        {0: '48664653865959285301', 1: '40422986148598663804350243', 2: '6515768095338571250010090'}
-
-        """
+        tallies = []
 
         approval_thresh_pct = (self.proposal_type_info['approval_threshold_bps'] / 10000)
         quorum_thresh_pct = (self.proposal_type_info['quorum_bps'] / 10000)
         
-        votable_supply = self.votable_supply   
-        assert quorum_thresh_pct == self.quorum / votable_supply
+        for category in ['app', 'user', 'chain']:
 
-        # TODO - should this really be "include_abstain=True"?
-        return ApprovalTally(votable_supply, quorum_thresh_pct, approval_thresh_pct, counts, aggregated_support_vp, include_abstain=True)
+            cat_offc_votes = offc_votes[offc_votes['SelectionMethod'] == category][['choices', 'weight', 'support']]
+
+            eligible_votes = self.ch_counts[category]
+
+            blank_counts = defaultdict(dict)
+            for choice_pos, choice_label in enumerate(self.choice_list):
+                for support in [0, 1, 2]:
+                    blank_counts[choice_pos][support] = 0
+                    
+            if len(cat_offc_votes) == 0:
+                counts = dict(blank_counts)
+                aggregated_support_vp = { k : 0 for k in [0, 1, 2]}
+                tallies.append(ApprovalTally(eligible_votes, quorum_thresh_pct, approval_thresh_pct, counts, aggregated_support_vp, include_abstain=True))
+
+            else:
+
+                ballot_feed = cat_offc_votes[['weight', 'support', 'choices']].explode('choices')
+
+                counts = ballot_feed.groupby(['choices', 'support']).apply(np.sum)
+                totals = ballot_feed.groupby(['choices'])['weight'].apply(np.sum).to_dict()
+
+                aggregated_support_vp = cat_offc_votes[['support', 'weight']].groupby('support')['weight'].sum().to_dict()
+                aggregated_support_vp = { k : int(v) for k, v in aggregated_support_vp.items()}
+
+                for (choice, support), value in counts['weight'].items():
+                    blank_counts[choice][support] = value
+                counts = dict(blank_counts)
+
+                """
+                At this point we have "counts" of the form...
+
+                {-1: {2: '6515768095338571250010090'},
+                0: {0: '48664653865959285301', 1: '31431910661813432620160489'},
+                1: {1: '35035962495117270703561571'},
+                2: {0: '48664653865959285301', 1: '17033284171118898054256072'},
+                3: {1: '17663853612321229474897508'},
+                4: {0: '48664653865959285301', 1: '24934837283900123569914475'},
+                5: {1: '28476520065880757383430022'},
+                6: {0: '48664653865959285301', 1: '23272354186448414025424072'},
+                7: {1: '21779420495943287974126505'}}
+
+                and "total" is of the form...  ...but unclear if we really need these.
+
+                {-1: '6515768095338571250010090', 0: '31431959326467298579445790', 1: '35035962495117270703561571', 2: '17033332835772764013541373', 3: '17663853612321229474897508', 4: '24934885948553989529199776', 5: '28476520065880757383430022', 6: '23272402851102279984709373', 7: '21779420495943287974126505'}
+
+                and "total voting vp" is of the form...
+
+                {0: '48664653865959285301', 1: '40422986148598663804350243', 2: '6515768095338571250010090'}
+
+                """
+            
+
+                tallies.append(ApprovalTally(eligible_votes, quorum_thresh_pct, approval_thresh_pct, counts, aggregated_support_vp, include_abstain=True))
+            
+        return tallies

@@ -44,6 +44,11 @@ class Proposal:
             return self.proposal_type_info['friendly_name']
         return self.proposal_type_info['module_name']
 
+    @property
+    def choice_list(self):
+        assert self.proposal_type_label == 'approval', f"Proposal type is not approval: {self.proposal_type_label}" 
+        choice_list = self.row['choices'][2:-2].split("', '")
+        return choice_list
 
     def __str__(self):
         return f"{self.emoji} {self.proposal_type_label.upper()}: {self.id}, title={self.title}"
@@ -53,7 +58,8 @@ class Proposal:
         self.gov_address = onchain_config['gov']['address']
         self.ptc_address = onchain_config['ptc']['address']
 
-        onchain_meta = json.load(open(DATA_DIR / DEPLOYMENT / (self.id + '.json'), 'r'))
+        fname = DATA_DIR / DEPLOYMENT / (self.id + '.json')
+        onchain_meta = json.load(open(fname, 'r'))
 
         self.proposal_type_info = onchain_meta['proposal_type_info']
         self.quorum = onchain_meta['quorum']
@@ -97,8 +103,15 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
         df = pd.read_csv(DATA_DIR / DEPLOYMENT / 'Vote.csv')
 
         offc_votes = df[df['proposalId'] == self.offchain_proposal_id].copy()
-        offc_votes['support'] = offc_votes['params'].apply(lambda x: json.loads(x)[0])
-        offc_votes['weight'] = 1
+
+        if self.proposal_type_label == 'basic':
+            offc_votes['support'] = offc_votes['params'].apply(lambda x: json.loads(x)[0])
+            offc_votes['weight'] = 1
+            cols = ['SelectionMethod', 'support', 'weight']
+        elif self.proposal_type_label == 'approval':
+            offc_votes['choices'] = offc_votes['params'].apply(lambda x: json.loads(x))
+            offc_votes['weight'] = 1
+            cols = ['SelectionMethod', 'choices', 'weight']
 
         offc_votes = offc_votes[offc_votes['refUID'].isin(citizens[~citizens['revoked']]['id'])].copy()
 
@@ -110,7 +123,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
         offc_votes_with_citizens = offc_votes.merge(citizens, left_on='refUID', right_on='id', how='inner', validate='one_to_one')
 
-        offc_votes_with_citizens = offc_votes_with_citizens[['SelectionMethod', 'support', 'weight']].copy()
+        offc_votes_with_citizens = offc_votes_with_citizens[cols].copy()
 
         self.offc_votes = offc_votes_with_citizens        
 
@@ -264,8 +277,12 @@ class Hybrid(Proposal):
             assert t.quorum_thresh_pct == quorum_thresh_pct, f"Quorum PCTs do not match: {t.quorum_thresh_pct} != {quorum_thresh_pct} for tally {i}"
             assert t.approval_thresh_pct == approval_thresh_pct, f"Approval Threshold PCTs do not match: {t.approval_thresh_pct} != {approval_thresh_pct} for tally {i}"
 
-        final_tally = FinalBasicTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct, include_abstain=self.include_abstain)
-        print(final_tally.gen_tally_report("Final"))
+        if self.proposal_type_label == 'basic':
+            final_tally = FinalBasicTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct, include_abstain=self.include_abstain)
+            print(final_tally.gen_tally_report("Final"))
+        elif self.proposal_type_label == 'approval':
+            final_tally = FinalApprovalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct)
+            print(final_tally.gen_tally_report("Final"))
     
     def load_context(self):
 
