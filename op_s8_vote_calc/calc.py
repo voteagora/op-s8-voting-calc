@@ -352,7 +352,7 @@ class OffChain(Proposal):
 
     def calculate_standard_tallies(self):
         
-        assert self.proposal_type_label == 'basic'
+        assert self.proposal_type_label == 'basic', f"Proposal type is not basic: {self.proposal_type_label}"
 
         def bigint_sum(arr):
             return str(sum([int(o) for o in arr.values]))
@@ -558,8 +558,13 @@ class Hybrid(Proposal):
         print(self)
         print()
 
-        onc_tally = self.on_chain_p.calculate_basic_tally()
-        offc_tallies = self.off_chain_p.calculate_standard_tallies()
+        if self.proposal_type_label == 'basic':
+            onc_tally = self.on_chain_p.calculate_basic_tally()
+            offc_tallies = self.off_chain_p.calculate_standard_tallies()
+
+        elif self.proposal_type_label == 'approval':
+            onc_tally = self.on_chain_p.calculate_approval_tally()
+            offc_tallies = self.off_chain_p.calculate_approval_tallies()
 
         tallies = [onc_tally] + offc_tallies
 
