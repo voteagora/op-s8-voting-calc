@@ -46,7 +46,7 @@ class Proposal:
 
 
     def __str__(self):
-        return f"{self.emoji} {self.proposal_type_label.upper()}: id={self.id}, title={self.title}"
+        return f"{self.emoji} {self.proposal_type_label.upper()}: {self.id}, title={self.title}"
 
     def load_meta(self):
 
@@ -195,7 +195,6 @@ class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
 
         if self.proposal_type_label == 'basic':
             tally = self.calculate_basic_tally()
-
             print(tally.gen_tally_report("Token House"))
             
             final_tally = FinalBasicTally([tally], weights = weights, quorum_thresh_pct = tally.quorum_thresh_pct, approval_thresh_pct = tally.approval_thresh_pct)
@@ -203,8 +202,10 @@ class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
 
         elif self.proposal_type_label == 'approval':
             tally = self.calculate_approval_tally()
+            print(tally.gen_tally_report("Token House", include_quorum=False))
 
-            print(tally.gen_tally_report("Token House"))
+            final_tally = FinalApprovalTally([tally], weights = weights, quorum_thresh_pct = tally.quorum_thresh_pct, approval_thresh_pct = tally.approval_thresh_pct)
+            print(final_tally.gen_tally_report("Final"))
         else:
             raise Exception(f"Unknown proposal type: {self.proposal_type_label}")
 

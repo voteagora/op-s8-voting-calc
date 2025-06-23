@@ -93,7 +93,7 @@ class BasicTally:
             self.passing_quorum = self.quorum >= self.quorum_thresh_pct
             self.passing_approval_threshold = self.approval >= self.approval_thresh_pct
 
-    def gen_tally_report(self, label, weight=1):
+    def gen_tally_report(self, label, weight=1, include_quorum=True):
 
         tally = f"{label} Tally"
         
@@ -114,7 +114,8 @@ class BasicTally:
         if self.include_abstain:
             tally += f"Abstain:  {self.abstain_votes:>32} ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
 
-        tally += f"Quorum: {self.quorum:.2%} {bte(self.passing_quorum)} ({self.quorum_thresh_pct:.0%}), Approval: {self.approval:.2%} {bte(self.passing_approval_threshold)} ({self.approval_thresh_pct:.0%}) -> "
+        if include_quorum:
+            tally += f"Quorum: {self.quorum:.2%} {bte(self.passing_quorum)} ({self.quorum_thresh_pct:.0%}), Approval: {self.approval:.2%} {bte(self.passing_approval_threshold)} ({self.approval_thresh_pct:.0%}) -> "
 
         if self.passing_quorum and self.passing_approval_threshold:
             tally += "✅ PASSING\n"
