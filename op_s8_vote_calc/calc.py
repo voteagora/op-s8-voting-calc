@@ -136,13 +136,14 @@ class StandardTally:
         tally += "-" * (len(tally) - 1) + "\n"
 
 
-        tally += f"Given {self.total_votes} total votes, and {self.eligible_votes} eligible votes... \n"
+        tally += f"Total:    {self.total_votes:>32}\n"
+        tally += f"Eligible: {self.eligible_votes:>32}\n"
 
-        tally += f"For: {self.for_votes} ({self.relative_for_pct:.1%} of total | {self.absolute_for_pct:.1%} of eligible)\n"
-        tally += f"Against: {self.against_votes} ({self.relative_against_pct:.1%} of total | {self.absolute_against_pct:.1%} of eligible)\n"
+        tally += f"For:      {self.for_votes:>32} ({self.relative_for_pct:.1%} of total | {self.absolute_for_pct:.1%} of eligible)\n"
+        tally += f"Against:  {self.against_votes:>32} ({self.relative_against_pct:.1%} of total | {self.absolute_against_pct:.1%} of eligible)\n"
 
         if self.include_abstain:
-            tally += f"Abstain: {self.abstain_votes} ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
+            tally += f"Abstain:  {self.abstain_votes:>32} ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
 
         tally += f"Quorum: {self.quorum:.2%} {bte(self.passing_quorum)} ({self.quorum_thresh_pct:.0%}), Approval: {self.approval:.2%} {bte(self.passing_approval_threshold)} ({self.approval_thresh_pct:.0%}) -> "
 
@@ -302,7 +303,7 @@ class OffChain(Proposal):
     emoji = '⛓️‍💥'
     def __init__(self, row):
         self.row = row.to_dict()
-        self.offchain_proposal_id = self.row['id']
+        self.offchain_proposal_id = self.row['proposalId']
         self.id = self.offchain_proposal_id
         self.proposal_type_id = self.row['proposal_type_id']
         self.calculation_options = self.row.get('calculation_options', 0)
@@ -547,7 +548,7 @@ class Hybrid(Proposal):
         self.row = deepcopy(self.on_chain)
         self.row.update(self.off_chain)
 
-        self.id = f"{self.on_chain['proposal_id']}-{self.off_chain['id']}"
+        self.id = f"{self.on_chain['proposal_id']}-{self.off_chain['proposalId']}"
 
     def show_result(self):
 

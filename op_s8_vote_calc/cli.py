@@ -178,8 +178,8 @@ def download_proposal_context():
             proposal_type_id = row['proposal_type']
             onchain_proposal_id = proposal_id
             tech = "onchain"
-        elif 'id' in row:
-            proposal_id = row['id']
+        elif 'onchain_proposalid' in row:
+            proposal_id = row['proposalId']
             proposal_type_id = row['proposal_type_id']
             onchain_proposal_id = row['onchain_proposalid']
             tech = "offchain"
@@ -224,6 +224,11 @@ def download_proposal_context():
         json.dump(out, fs, indent=2)
         fs.close()
 
+def download_all_data():
+
+    download_onchain_data()
+    download_offchain_data()
+    download_proposal_context()
 
 def list_proposals():
 
@@ -241,7 +246,7 @@ def calculate(proposal_id: str):
 
 def main():
 
-    argh.dispatch_commands([download_onchain_data, download_offchain_data, download_proposal_context, list_proposals, calculate])
+    argh.dispatch_commands([download_all_data,download_onchain_data, download_offchain_data, download_proposal_context, list_proposals, calculate])
 
 
 if __name__ == '__main__':

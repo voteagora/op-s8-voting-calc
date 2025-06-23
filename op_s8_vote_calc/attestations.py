@@ -47,7 +47,7 @@ class Vote(AttestionMeta):
 
 class CreateProposal(AttestionMeta):
     def __init__(self, schema_id):
-        super().__init__(schema_id, contract='address', id='uint256', proposer='address', description='string', choices='string[]', proposal_type_id='uint8', start_block='uint256', end_block='uint256', proposal_type='string', tiers='uint256[]', onchain_proposalid='uint256', calculation_options='uint8')
+        super().__init__(schema_id, contract='address', proposalId='uint256', proposer='address', description='string', choices='string[]', proposal_type_id='uint8', start_block='uint256', end_block='uint256', proposal_type='string', tiers='uint256[]', onchain_proposalid='uint256', max_approvals='uint8', criteria='uint8', criteria_value='uint128', calculation_options='uint8')
 
 
 meta = {}
