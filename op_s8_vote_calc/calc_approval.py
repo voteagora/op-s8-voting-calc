@@ -165,23 +165,29 @@ class FinalApprovalTally:
 
     def gen_tally_report(self, label):
 
-        tally = f"{label} Tally\n"
-        tally += "-" * (len(tally) - 1) + "\n"
+        out = f"{label} Tally\n"
+        out += "-" * (len(out) - 1) + "\n"
 
-        # tally += f"For: ({self.relative_for_pct:.1%} of total | {self.absolute_for_pct:.1%} of eligible)\n"
-        # tally += f"Against: ({self.relative_against_pct:.1%} of total | {self.absolute_against_pct:.1%} of eligible)\n"
+        for choice, tally in enumerate(self.tallies):
+            if choice == -1 and self.include_abstain:
+                out += f"Abstain {choice}:               {tally.abstain_votes:>32}\n" # ({tally.abstain_votes / self.total_votes:.1%} of total | {tally.abstain_votes / self.eligible_votes:.1%} of eligible)\n"
+            else:
+                out += f"For {choice}:               {tally.relative_pct[choice][1]:>32} {bte(tally.passing_approval_threshold)}\n" # ({tally.relative_pct[choice][1]:.1%} of total | {tally.absolute_pct[choice][1]:.1%} of eligible)\n"
+
+        # out += f"For: ({self.relative_pct:.1%} of total | {self.absolute_for_pct:.1%} of eligible)\n"
+        # out += f"Against: ({self.relative_against_pct:.1%} of total | {self.absolute_against_pct:.1%} of eligible)\n"
 
         # if self.include_abstain:
-        #     tally += f"Abstain: ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
+        #     out += f"Abstain: ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
 
-        tally += f"Quorum: {self.quorum:.3%} {bte(self.passing_quorum)} ({self.quorum_thresh_pct:.0%}), Approval: {self.approval:.3%} {bte(self.passing_approval_threshold)} ({self.approval_thresh_pct:.0%}) -> "
+        out += f"Quorum: {self.quorum:.3%} {bte(self.passing_quorum)} ({self.quorum_thresh_pct:.0%}), Approval: {self.approval:.3%} {bte(self.passing_approval_threshold)} ({self.approval_thresh_pct:.0%}) -> "
 
         if self.passing_quorum and self.passing_approval_threshold:
-            tally += "✅ PASSING\n"
+            out += "✅ PASSING\n"
         else:
-            tally += "❌ DEFEATED\n"
+            out += "❌ DEFEATED\n"
 
-        return tally
+        return out
 
 
 
@@ -201,22 +207,29 @@ class OnChainApprovalMixin:
 
         onc_votes['params'] = onc_votes['params'].apply(params_decode)
 
+        blank_counts = defaultdict(dict)
+        for choice_pos, choice_label in enumerate(self.choice_list):
+            for support in [0, 1, 2]:
+                blank_counts[choice_pos][support] = 0
+
         def bigint_sum(arr):
-            return str(sum([int(o) for o in arr.values]))
+            ans = 0
+            for val in arr.values:
+                ans += int(val[0])
+            return str(ans)
 
         ballot_feed = onc_votes[['support', 'weight', 'params']].explode('params')
 
-        counts = ballot_feed.groupby(['params', 'support']).apply(bigint_sum)
+        counts = ballot_feed.groupby(['params', 'support']).apply(bigint_sum, include_groups=False)
         totals = ballot_feed.groupby(['params'])['weight'].apply(bigint_sum).to_dict()
     
         # pandas doesn't play nice with large ints.
-        aggregated_support_vp = onc_votes[['support', 'weight']].groupby('support').apply(bigint_sum).to_dict()
+        aggregated_support_vp = onc_votes[['support', 'weight']].groupby('support').apply(bigint_sum, include_groups=False).to_dict()
         aggregated_support_vp = { k : int(v) for k, v in aggregated_support_vp.items()}
 
-        final_dict = defaultdict(dict)
         for (param, support), value in counts.items():
-            final_dict[param][support] = value
-        counts = dict(final_dict)
+            blank_counts[param][support] = value
+        counts = dict(blank_counts)
 
         """
         At this point we have "counts" of the form...
@@ -284,11 +297,11 @@ class OffChainApprovalMixin:
 
                 ballot_feed = cat_offc_votes[['weight', 'support', 'choices']].explode('choices')
 
-                counts = ballot_feed.groupby(['choices', 'support']).apply(np.sum)
+                counts = ballot_feed.groupby(['choices', 'support']).apply(np.sum, axis=0, include_groups=False)
                 totals = ballot_feed.groupby(['choices'])['weight'].apply(np.sum).to_dict()
 
                 aggregated_support_vp = cat_offc_votes[['support', 'weight']].groupby('support')['weight'].sum().to_dict()
-                aggregated_support_vp = { k : int(v) for k, v in aggregated_support_vp.items()}
+                aggregated_support_vp = { k : int(v) for k, v in aggregated_support_vp.items()} 
 
                 for (choice, support), value in counts['weight'].items():
                     blank_counts[choice][support] = value

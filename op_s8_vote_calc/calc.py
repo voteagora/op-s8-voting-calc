@@ -47,9 +47,13 @@ class Proposal:
     @property
     def choice_list(self):
         assert self.proposal_type_label == 'approval', f"Proposal type is not approval: {self.proposal_type_label}" 
-        choice_list = self.row['choices'][2:-2].split("', '")
-        return choice_list
 
+        if 'choices' in self.row:
+            choice_list = self.row['choices'][2:-2].split("', '")
+            return choice_list
+        else:
+            return [c[4] for c in self.decoded_proposal_data_choices]
+        
     def __str__(self):
         return f"{self.emoji} {self.proposal_type_label.upper()}: {self.id}, title={self.title}"
 
@@ -60,7 +64,6 @@ class Proposal:
 
         fname = DATA_DIR / DEPLOYMENT / (self.id + '.json')
         onchain_meta = json.load(open(fname, 'r'))
-
         self.proposal_type_info = onchain_meta['proposal_type_info']
         self.quorum = onchain_meta['quorum']
         self.votable_supply = onchain_meta['votable_supply']
@@ -87,6 +90,22 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
             self.proposal_type_info['tiers'] = self.row['tiers']
 
         self.load_meta()
+
+        if self.proposal_type_label == 'approval':
+            self.max_approvals = self.row['max_approvals']
+            
+            if self.row['criteria'] == 0:
+                # In Seasion 8, this is in basis points.  Before S8, this number was in units of tokens.
+                self.criteria = 'minimum_threshold'
+                self.choice_approval_threshold_pct = self.row['criteria_value'] / 10000
+                assert self.choice_approval_threshold_pct <= 1.0, f"Invalid choice approval threshold: {self.choice_approval_threshold_pct}"
+            else:
+                self.criteria = 'top_choices'
+                self.number_of_winners = self.row['criteria_value']
+                raise Exception("Criteria 1 not implemented")
+            
+            self.criteria_value = self.row['criteria_value']
+
 
 
     def load_context(self):
@@ -178,6 +197,8 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
         final_tally = FinalBasicTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct, include_abstain=self.include_abstain)
         print(final_tally.gen_tally_report("Final"))
 
+from .decode_creates import decode_proposal_data
+
 class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
     emoji = '⛓️'
     def __init__(self, row):
@@ -188,6 +209,25 @@ class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
         self.load_meta()
 
         self.include_abstain = 'abstain' in self.counting_mode
+
+        proposal_data = self.row.get('proposal_data', pd.NA)
+
+        if pd.isna(proposal_data):
+            proposal_data = ''
+
+        if proposal_data:
+            self.decoded_proposal_data = decode_proposal_data(self.proposal_type_label, proposal_data)
+            
+            if self.proposal_type_label == 'basic':
+                self.decoded_proposal_data_choices, self.decoded_proposal_data_settings = None, None
+            elif self.proposal_type_label == 'approval':
+                self.decoded_proposal_data_choices, self.decoded_proposal_data_settings = self.decoded_proposal_data
+            elif self.proposal_type_label == 'optimistic':
+                self.decoded_proposal_data_choices, self.decoded_proposal_data_settings = None, self.decoded_proposal_data[0]
+        else:
+            self.decoded_proposal_data = None
+            self.decoded_proposal_data_choices, self.decoded_proposal_data_settings = None, None
+
 
     def load_context(self):
 
@@ -244,6 +284,13 @@ class Hybrid(Proposal):
         
         self.row = deepcopy(self.on_chain)
         self.row.update(self.off_chain)
+
+        # self.decoded_proposal_data = self.on_chain_p.decoded_proposal_data
+        # self.decoded_proposal_data_choices, self.decoded_proposal_data_settings = self.on_chain_p.decoded_proposal_data_choices, self.on_chain_p.decoded_proposal_data_settings
+
+        # TODO - This is a hack, to transfer on-chain context into the off-chain proposal object before any calcs.
+        # self.off_chain_p.decoded_proposal_data = self.decoded_proposal_data
+        # self.off_chain_p.decoded_proposal_data_choices, self.off_chain_p.decoded_proposal_data_settings = self.decoded_proposal_data_choices, self.decoded_proposal_data_settings
 
         self.id = f"{self.on_chain['proposal_id']}-{self.off_chain['proposalId']}"
 
