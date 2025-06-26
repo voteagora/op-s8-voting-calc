@@ -18,7 +18,7 @@ test:
     address: '0xb88131610ff4D7D46050c9d1DEE413f8b6b8A5bd'
   alligator:
     address: '0x5d729d4c0BF5d0a2Fa0F801c6e0023BD450c4fd6'
-  rpc: 'https://opt-sepolia.g.alchemy.com/v2/77AxvBBHaSYQnqHDDz6qy9Z7tmvN_0SY'
+  rpc: 'https://sepolia.optimism.io'
   start_block: 28503078
   end_block: 29777777
   
@@ -41,6 +41,6 @@ main:
     address: '0xCE52b7cc490523B3e81C3076D5ae5Cca9a3e2D6F'
   alligator: 
     address: '0x7f08F3095530B67CdF8466B7a923607944136Df0'
-  rpc: 'https://opt-mainnet.g.alchemy.com/v2/77AxvBBHaSYQnqHDDz6qy9Z7tmvN_0SY'
-  start_block: 125283043
-  end_block: 125783044
+  rpc: 'https://mainnet.optimism.io'
+  start_block: 137682723
+  end_block: 137689723
