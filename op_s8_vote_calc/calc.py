@@ -115,6 +115,8 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
         citizens = pd.read_csv(DATA_DIR / DEPLOYMENT / "Citizens.csv")
 
+        citizens['SelectionMethod'] = citizens['SelectionMethod'].astype(str)
+
         # Filter out non-compliant attestations.
         citizens = citizens[citizens['SelectionMethod'].isin(['5.1', '5.2', '5.3'])]
         citizens['SelectionMethod'] = citizens['SelectionMethod'].map({'5.1': 'chain', '5.2': 'app', '5.3': 'user'})
