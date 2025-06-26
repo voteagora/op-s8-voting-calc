@@ -56,14 +56,12 @@ meta['test'] = {
     'citizen': Citizens('0x754160df7a4bd6ecf7e8801d54831a5d33403b4d52400e87d7611ee0eee6de23'),
     'citizen_wallet_change': CitizenWalletChange('0x3acfc8404d72c7112ef6f957f0fcf0a5c3e026b586c101ea25355d4666a00362'),
     'vote': Vote('0xec3674d93b7007e918cf91ddd44bd14f28d138a4e7f3a79214dc35da2aed794e'),
-    # 'create_proposal': CreateProposal('0xc2d307e00cc97b07606361c49971814ed50e20b080a0fb7a3c9c94c224463539')
-    # 'create_proposal': CreateProposal('0x875845d42b7cb72da8d97c3442182b9a0ee302d4a8d661ee8b83f13bf1f8f38b')
-    'create_proposal': CreateProposal('0x590765de6f34bbae3e51aa89e571f567fa6d63cf3f8225592d58133860a0ccda') # Adds calculationOptions
+    'create_proposal': CreateProposal('0x590765de6f34bbae3e51aa89e571f567fa6d63cf3f8225592d58133860a0ccda')
 }
 
 meta['main'] = {
     'citizen': Citizens('0xc35634c4ca8a54dce0a2af61a9a9a5a3067398cb3916b133238c4f6ba721bc8a'),
-    'citizen_wallet_change': CitizenWalletChange('TODO'),
-    'vote': Vote('TODO'),
-    'create_proposal': CreateProposal('TODO')
+    'citizen_wallet_change': CitizenWalletChange('0xa55599e411f0eb310d47357e7d6064b09023e1d6f8bcb5504c051572a37db5f7'),
+    'vote': Vote('0xc113116804c90320b3d059ff8eed8b7171e3475f404f65828bbbe260dce15a99'),
+    'create_proposal': CreateProposal('0xfc5b3c0472d09ac39f0cb9055869e70c4c59413041e3fd317f357789389971e4')
 }
