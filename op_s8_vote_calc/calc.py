@@ -72,7 +72,7 @@ class Proposal:
         self.counting_mode = onchain_meta['counting_mode']
 
 
-class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
+class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin, OffChainOptimisticMixin):
     emoji = '⛓️‍💥'
     def __init__(self, row):
         self.row = row.to_dict()
@@ -112,6 +112,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
         # Assumed hard-coded for now.
         self.ch_counts = {'app' : 100, 'user': 1000, 'chain' : 15}
+        self.voto_levels = {2 : 40.0, 3 : 30.0, 4 : 20.0} #TODO - confirm these are the tiers
 
         citizens = pd.read_csv(DATA_DIR / DEPLOYMENT / "Citizens.csv")
 
@@ -125,7 +126,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
         offc_votes = df[df['proposalId'] == self.offchain_proposal_id].copy()
 
-        if self.proposal_type_label == 'basic':
+        if self.proposal_type_label in ['basic', 'optimistic']:
             offc_votes['support'] = offc_votes['params'].apply(lambda x: json.loads(x)[0])
             offc_votes['weight'] = 1
             cols = ['SelectionMethod', 'support', 'weight']
@@ -147,33 +148,6 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
         offc_votes_with_citizens = offc_votes_with_citizens[cols].copy()
 
         self.offc_votes = offc_votes_with_citizens        
-
-    def calculate_basic_tallies(self):
-        
-        assert self.proposal_type_label == 'basic', f"Proposal type is not basic: {self.proposal_type_label}"
-
-        def bigint_sum(arr):
-            return str(sum([int(o) for o in arr.values]))
-
-        counts = self.offc_votes.groupby(['SelectionMethod', 'support'])['weight'].sum()
-        
-        empty = pd.Series(dtype='int64', name='weight')
-        empty.index.name = 'support'
-
-        tallies = []
-
-        for category in ['app', 'user', 'chain']:
-            cat_counts = counts.get(category, empty).to_dict(into=defaultdict(int))
-
-            approval_thresh_pct = (self.proposal_type_info['approval_threshold_bps'] / 10000)
-            quorum_thresh_pct =  (self.proposal_type_info['quorum_bps'] / 10000)
-
-            eligible_votes = self.ch_counts[category]
-            
-            tally = BasicTally(eligible_votes, quorum_thresh_pct, approval_thresh_pct, cat_counts[0], cat_counts[1], cat_counts[2], include_abstain=self.include_abstain)
-            tallies.append(tally)
-        
-        return tallies
 
     def show_result(self):
 
@@ -201,7 +175,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
 from .decode_creates import decode_proposal_data
 
-class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
+class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin, OnChainOptimisticMixin):
     emoji = '⛓️'
     def __init__(self, row):
         self.row = row.to_dict()
@@ -261,6 +235,14 @@ class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
 
             final_tally = FinalApprovalTally([tally], weights = weights, quorum_thresh_pct = tally.quorum_thresh_pct, approval_thresh_pct = tally.approval_thresh_pct)
             print(final_tally.gen_tally_report("Final"))
+        
+        elif self.proposal_type_label == 'optimistic':
+            tally = self.calculate_optimistic_tally()
+            print(tally.gen_tally_report("Token House", include_quorum=False))
+
+            final_tally = FinalOptimisticTally([tally], weights = weights, approval_thresh_pct = tally.approval_thresh_pct)
+            print(final_tally.gen_tally_report("Final"))
+            
         else:
             raise Exception(f"Unknown proposal type: {self.proposal_type_label}")
 
@@ -331,6 +313,9 @@ class Hybrid(Proposal):
             print(final_tally.gen_tally_report("Final"))
         elif self.proposal_type_label == 'approval':
             final_tally = FinalApprovalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct)
+            print(final_tally.gen_tally_report("Final"))
+        elif self.proposal_type_label == 'optimistic':
+            final_tally = FinalOptimisticTally(tallies, weights = weights, approval_thresh_pct = approval_thresh_pct)
             print(final_tally.gen_tally_report("Final"))
     
     def load_context(self):
