@@ -34,7 +34,7 @@ def bte(x):
 
 class OptimisticTally:
 
-    def __init__(self, eligible_votes, against_thresh_pct, against_votes=0, abstain_votes=0, include_abstain=False):
+    def __init__(self, eligible_votes, against_thresh_pct, against_votes=0, abstain_votes=0, include_abstain=False, tiers=False):
         """
         eligible_votes: Number of eligible voters (for off-chain) or Votable Supply (for on-chain)
         
@@ -43,6 +43,8 @@ class OptimisticTally:
         against_votes: Number of against votes (for off-chain) or VP against (for on-chain)
         abstain_votes: Number of abstain votes (for off-chain) or VP abstain (for on-chain)
         """
+
+        self.tiers = tiers
 
         self.against_votes = against_votes
         self.abstain_votes = abstain_votes
@@ -79,14 +81,15 @@ class OptimisticTally:
             self.quorum = 0
             self.against = 0
 
-            self.passing_quorum = self.quorum >= self.quorum_thresh_pct
+            # self.passing_quorum = self.quorum >= self.quorum_thresh_pct
             self.passing_against_threshold = self.against >= self.against_thresh_pct
 
     def gen_tally_report(self, label, weight=1, include_quorum=True):
 
+        
         tally = f"{label} Tally"
         
-        if weight < 1:
+        if weight < 1 and not self.tiers:
             tally += f" [{weight:.2%} of Final]\n"
         else:
             tally += "\n"
@@ -102,12 +105,25 @@ class OptimisticTally:
         if self.include_abstain:
             tally += f"Abstain:  {self.abstain_votes:>32} ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
 
-        tally += f"Against (Outcome): {self.against:.2%} {bte(self.passing_against_threshold)} ({self.against_thresh_pct:.0%})\n"
+        if self.tiers:
+            lowest_thresh = []
+            for group_cnt, thresh in self.tiers.items():
+                if self.against >= thresh:
+                    lowest_thresh.append(thresh)
 
-        if self.passing_against_threshold:
-            tally += "❌ DEFEATED\n"
+            tally += f"Against: {self.against:.2%}"
+            
+            if len(lowest_thresh) >0:
+                tally += f" (>= {min(lowest_thresh):.2%}-threshold tripped) \n"
+            else:
+                tally += f" (ie, did not clear lowest threshold.)\n"
         else:
+            tally += f"Against (Outcome): {self.against:.2%} {bte(self.passing_against_threshold)} ({self.against_thresh_pct:.0%})\n"
+
+        if not self.passing_against_threshold:
             tally += "✅ PASSING\n"
+        else:
+            tally += "❌ VETOED\n"
 
         return tally
 
@@ -116,6 +132,9 @@ class FinalOptimisticTally:
     def __init__(self, tallies, weights, against_thresh_tiers, include_abstain=False):
         self.tallies = tallies
         self.weights = weights
+        self.against_thresh_tiers = against_thresh_tiers
+
+        self.tiered = len(self.against_thresh_tiers) > 1
 
         # Is this stuff all irrelevant?
         self.include_abstain = include_abstain
@@ -128,11 +147,14 @@ class FinalOptimisticTally:
         self.against = sum([t.against * w for t, w in zip(tallies, weights)])
         self.include_abstain = include_abstain
 
+        against_thresh_tiers = {k: against_thresh_tiers[k] for k in sorted(against_thresh_tiers)}
+
         for tier_cnt, against_thresh_pct in against_thresh_tiers.items():
 
             self.against_thresh_pct = against_thresh_pct
     
-            self.passing_against_threshold = len([t.against >= against_thresh_pct for t in tallies]) >= tier_cnt
+            self.passing_against_threshold_cnt = sum([t.against >= against_thresh_pct for t in tallies])
+            self.passing_against_threshold =  self.passing_against_threshold_cnt >= tier_cnt
 
             if self.passing_against_threshold:
                 break
@@ -141,17 +163,29 @@ class FinalOptimisticTally:
 
     def gen_tally_report(self, label):
 
+        passing = not self.passing_against_threshold
+
         tally = f"{label} Tally\n"
         tally += "-" * (len(tally) - 1) + "\n"
 
-        tally += f"Against: ({self.relative_against_pct:.1%} of total | {self.absolute_against_pct:.1%} of eligible)\n"
+        if self.tiered:
 
-        if self.include_abstain:
-            tally += f"Abstain: ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
+            tally += "Given...\n"
+            for group_cnt, threshold in self.against_thresh_tiers.items():
+                tally += f">={threshold}% veto across {group_cnt} groups.\n"
 
-        tally += f"Against (Outcome): {self.against:.2%} {bte(self.passing_against_threshold)} ({self.against_thresh_pct:.0%})\n"
+            tally += f"Given relevant against-threshold is {self.against_thresh_pct}, and {self.passing_against_threshold_cnt} cleared that level, so this proposal is...\n"
 
-        if self.passing_against_threshold:
+        else:
+            tally += f"Against: ({self.relative_against_pct:.1%} of total | {self.absolute_against_pct:.1%} of eligible)\n"
+
+            if self.include_abstain:
+                tally += f"Abstain: ({self.relative_abstain_pct:.1%} of total | {self.absolute_abstain_pct:.1%} of eligible)\n"
+
+            tally += f"Against (Outcome): {self.against:.2%} {bte(self.passing_against_threshold)} ({self.against_thresh_pct:.0%})\n"
+
+
+        if passing:
             tally += "✅ PASSING\n"
         else:
             tally += "❌ DEFEATED\n"
@@ -164,6 +198,8 @@ class OffChainOptimisticMixin:
     def calculate_optimistic_tallies(self):
         
         assert self.proposal_type_label == 'optimistic', f"Proposal type is not optimistic: {self.proposal_type_label}"
+
+        tiers = self.proposal_type_info['tiers']
 
         def bigint_sum(arr):
             return str(sum([int(o) for o in arr.values]))
@@ -181,16 +217,16 @@ class OffChainOptimisticMixin:
             against_thresh_pct = 0.125 # Hardcoded? TODO - make match. 
 
             eligible_votes = self.ch_counts[category]
-            
-            tally = OptimisticTally(eligible_votes, against_thresh_pct, cat_counts[0], cat_counts[2], include_abstain=self.include_abstain)
+
+            tally = OptimisticTally(eligible_votes, against_thresh_pct, cat_counts[0], cat_counts[2], include_abstain=self.include_abstain, tiers=tiers)
             tallies.append(tally)
         
         return tallies
 
 class OnChainOptimisticMixin:
 
-    def calculate_optimistic_tally(self):
-        
+    def calculate_optimistic_tally(self, tiers=False):
+
         assert self.proposal_type_label == 'optimistic', f"Proposal type is not optimistic: {self.proposal_type_label}"
 
         def bigint_sum(arr):
@@ -203,6 +239,6 @@ class OnChainOptimisticMixin:
         against_thresh_pct = 0.125 # Hardcoded? TODO - figure out how this is set for on-chain.
         
         votable_supply = self.votable_supply   
-
-        return OptimisticTally(votable_supply, against_thresh_pct, against_votes, abstain_votes, include_abstain=self.include_abstain)
+        
+        return OptimisticTally(votable_supply, against_thresh_pct, against_votes, abstain_votes, include_abstain=self.include_abstain, tiers=tiers)
 
