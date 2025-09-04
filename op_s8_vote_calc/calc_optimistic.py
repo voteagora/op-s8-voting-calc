@@ -177,9 +177,9 @@ class FinalOptimisticTally:
 
             tally += "Given...\n"
             for group_cnt, threshold in self.against_thresh_tiers.items():
-                tally += f">={threshold}% veto across {group_cnt} groups.\n"
+                tally += f">={threshold:.2%}% veto across {group_cnt} groups.\n"
 
-            tally += f"Given relevant against-threshold is {self.against_thresh_pct}, and {self.passing_against_threshold_cnt} cleared that level, so this proposal is...\n"
+            tally += f"...the relevant against-threshold is {self.against_thresh_pct:.2%}, and {self.passing_against_threshold_cnt} cleared that level, so this proposal is...\n"
 
         else:
             tally += f"Against: ({self.relative_against_pct:.1%} of total | {self.absolute_against_pct:.1%} of eligible)\n"
