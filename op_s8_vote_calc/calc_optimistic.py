@@ -108,10 +108,10 @@ class OptimisticTally:
         if self.tiers:
             lowest_thresh = []
             for group_cnt, thresh in self.tiers.items():
-                if self.against >= thresh:
+                if self.absolute_against_pct >= thresh:
                     lowest_thresh.append(thresh)
 
-            tally += f"Against: {self.against:.2%}"
+            tally += f"Against: {self.absolute_against_pct:.2%}"
             
             if len(lowest_thresh) >0:
                 tally += f" (>= {min(lowest_thresh):.2%}-threshold tripped) \n"
@@ -149,15 +149,20 @@ class FinalOptimisticTally:
 
         against_thresh_tiers = {k: against_thresh_tiers[k] for k in sorted(against_thresh_tiers)}
 
-        for tier_cnt, against_thresh_pct in against_thresh_tiers.items():
+        if against_thresh_tiers:
+            for tier_cnt, against_thresh_pct in against_thresh_tiers.items():
 
-            self.against_thresh_pct = against_thresh_pct
-    
-            self.passing_against_threshold_cnt = sum([t.against >= against_thresh_pct for t in tallies])
-            self.passing_against_threshold =  self.passing_against_threshold_cnt >= tier_cnt
+                self.against_thresh_pct = against_thresh_pct
+        
+                self.passing_against_threshold_cnt = sum([t.against >= against_thresh_pct for t in tallies])
+                self.passing_against_threshold =  self.passing_against_threshold_cnt >= tier_cnt
 
-            if self.passing_against_threshold:
-                break
+                if self.passing_against_threshold:
+                    break
+        else:
+            # TODO - pick up this context from the proposal creation
+            self.against_thresh_pct = 0.20
+            self.passing_against_threshold = self.against > self.against_thresh_pct
 
 
 
@@ -214,7 +219,7 @@ class OffChainOptimisticMixin:
         for category in ['app', 'user', 'chain']:
             cat_counts = counts.get(category, empty).to_dict(into=defaultdict(int))
 
-            against_thresh_pct = 0.125 # Hardcoded? TODO - make match. 
+            against_thresh_pct = 0.20 # Hardcoded? TODO - make match. 
 
             eligible_votes = self.ch_counts[category]
 
@@ -236,7 +241,7 @@ class OnChainOptimisticMixin:
         against_votes = int(counts.get(0, 0))
         abstain_votes = int(counts.get(2, 0))
 
-        against_thresh_pct = 0.125 # Hardcoded? TODO - figure out how this is set for on-chain.
+        against_thresh_pct = 0.20 # Hardcoded? TODO - figure out how this is set for on-chain.
         
         votable_supply = self.votable_supply   
         

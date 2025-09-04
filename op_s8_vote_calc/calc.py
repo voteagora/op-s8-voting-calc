@@ -348,6 +348,14 @@ class ProposalLister:
         on_chain = []
         hybrid = []
 
+        offchain_only = off_chain_props_df[off_chain_props_df['onchain_proposalid'] == '0']
+
+        # We have a problem where our UI lets you create multiple EAS attestations.
+        offchain_with_onchain = off_chain_props_df[off_chain_props_df['onchain_proposalid'] != '0']
+        offchain_with_onchain = offchain_with_onchain.drop_duplicates('onchain_proposalid', keep='last')
+
+        off_chain_props_df = pd.concat([offchain_only, offchain_with_onchain])
+
         for idx, row in off_chain_props_df.iterrows():
             if row['onchain_proposalid'] == '0':
                 try:
@@ -437,3 +445,10 @@ def load_proposal_data():
 
 if __name__ == '__main__':
     cli()
+
+"""
+25881190083318169286901946609701626294276077755024338526026685811531833848996-60262454855309230899587850064256879056222955035702291827454818794023677710944
+
+25881190083318169286901946609701626294276077755024338526026685811531833848996 -> https://op-atlas-fx6v5dqp9-voteagora.vercel.app/proposals/21045975496005278211124638822250570255307319196331346617887458740519548845124
+
+"""
