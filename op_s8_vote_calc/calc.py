@@ -92,6 +92,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin, OffChainOpti
 
         if 'tiers' in self.row:
             tiers = ast.literal_eval(self.row['tiers'])
+            print(tiers)
             tiers = [t / 10000 for t in tiers]
             tiers = dict(zip([4, 3, 2], tiers)) # In S8, tiers MUST be sorted before being put on chain.
             self.proposal_type_info['tiers'] = tiers
