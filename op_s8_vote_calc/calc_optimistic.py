@@ -71,7 +71,7 @@ class OptimisticTally:
             self.absolute_abstain_pct = self.abstain_votes / self.eligible_votes
 
             self.against = self.against_votes / self.total_votes
-            self.passing_against_threshold = self.against >= self.against_thresh_pct
+            self.passing_against_threshold = self.absolute_against_pct >= self.against_thresh_pct
 
         else:
             self.relative_against_pct = 0
@@ -82,7 +82,7 @@ class OptimisticTally:
             self.against = 0
 
             # self.passing_quorum = self.quorum >= self.quorum_thresh_pct
-            self.passing_against_threshold = self.against >= self.against_thresh_pct
+            self.passing_against_threshold = self.absolute_against_pct >= self.against_thresh_pct
 
     def gen_tally_report(self, label, weight=1, include_quorum=True):
 
@@ -154,7 +154,7 @@ class FinalOptimisticTally:
 
                 self.against_thresh_pct = against_thresh_pct
         
-                self.passing_against_threshold_cnt = sum([t.against >= against_thresh_pct for t in tallies])
+                self.passing_against_threshold_cnt = sum([t.absolute_against_pct >= against_thresh_pct for t in tallies])
                 self.passing_against_threshold =  self.passing_against_threshold_cnt >= tier_cnt
 
                 if self.passing_against_threshold:
@@ -193,7 +193,7 @@ class FinalOptimisticTally:
         if passing:
             tally += "✅ PASSING\n"
         else:
-            tally += "❌ DEFEATED\n"
+            tally += "❌ VETOED\n"
 
         return tally
 
