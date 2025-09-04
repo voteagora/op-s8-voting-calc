@@ -133,21 +133,24 @@ def download_offchain_data():
 
         for attestation in attestations:
 
+            msg = ''
+
             # One bad attestion, can't be decoded.
             if attestation['id'] == '0x01b52865c05bcadc420c82e14d59cb06ed0f4c5845e948b77c80ea4af599294e':
                 continue
                 
             try:
                 payload = schema_meta.decode(attestation['data'])
+
+                del attestation['decodedDataJson']
+                del attestation['data']
+            
+                attestation.update(payload)
+                
+                writer.writerow(attestation)
+                
             except Exception as e:
                 print(f"❌ Bad {schema_meta.name} attestion: {attestation['id']} - {attestation['data']}")
-            
-            del attestation['decodedDataJson']
-            del attestation['data']
-            
-            attestation.update(payload)
-            
-            writer.writerow(attestation)
 
 def download_proposal_context():
 
