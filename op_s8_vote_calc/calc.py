@@ -1,5 +1,5 @@
 import click
-import csv, os
+import csv, os, ast
 from pathlib import Path
 from yaml import load, FullLoader
 from pprint import pprint
@@ -18,6 +18,7 @@ from abifsm import ABISet, ABI
 from .utils import camel_to_snake
 from .calc_basic import OffChainBasicMixin, OnChainBasicMixin,                     BasicTally,    FinalBasicTally
 from .calc_approval import OffChainApprovalMixin, OnChainApprovalMixin, Choice, ApprovalTally, FinalApprovalTally
+from .calc_optimistic import FinalOptimisticTally, OffChainOptimisticMixin, OnChainOptimisticMixin
 
 from .signatures import *
 
@@ -72,7 +73,7 @@ class Proposal:
         self.counting_mode = onchain_meta['counting_mode']
 
 
-class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
+class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin, OffChainOptimisticMixin):
     emoji = '⛓️‍💥'
     def __init__(self, row):
         self.row = row.to_dict()
@@ -84,12 +85,16 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
         self.include_abstain = self.calculation_options == 0
 
         self.proposal_type_info = {}
-        
+
         self.proposal_type_info['friendly_name'] = self.row['proposal_type']
-        if 'tiers' in self.row:
-            self.proposal_type_info['tiers'] = self.row['tiers']
 
         self.load_meta()
+
+        if 'tiers' in self.row:
+            tiers = ast.literal_eval(self.row['tiers'])
+            tiers = [t / 10000 for t in tiers]
+            tiers = dict(zip([4, 3, 2], tiers)) # In S8, tiers MUST be sorted before being put on chain.
+            self.proposal_type_info['tiers'] = tiers
 
         if self.proposal_type_label == 'approval':
             self.max_approvals = self.row['max_approvals']
@@ -102,7 +107,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
             else:
                 self.criteria = 'top_choices'
                 self.number_of_winners = self.row['criteria_value']
-                raise Exception("Criteria 1 not implemented")
+                raise NotImplementedError("Criteria 1 not implemented")
             
             self.criteria_value = self.row['criteria_value']
 
@@ -112,6 +117,8 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
         # Assumed hard-coded for now.
         self.ch_counts = {'app' : 100, 'user': 1000, 'chain' : 15}
+
+        self.voto_levels = self.proposal_type_info['tiers']
 
         citizens = pd.read_csv(DATA_DIR / DEPLOYMENT / "Citizens.csv")
 
@@ -125,7 +132,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
         offc_votes = df[df['proposalId'] == self.offchain_proposal_id].copy()
 
-        if self.proposal_type_label == 'basic':
+        if self.proposal_type_label in ['basic', 'optimistic']:
             offc_votes['support'] = offc_votes['params'].apply(lambda x: json.loads(x)[0])
             offc_votes['weight'] = 1
             cols = ['SelectionMethod', 'support', 'weight']
@@ -147,33 +154,6 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
         offc_votes_with_citizens = offc_votes_with_citizens[cols].copy()
 
         self.offc_votes = offc_votes_with_citizens        
-
-    def calculate_basic_tallies(self):
-        
-        assert self.proposal_type_label == 'basic', f"Proposal type is not basic: {self.proposal_type_label}"
-
-        def bigint_sum(arr):
-            return str(sum([int(o) for o in arr.values]))
-
-        counts = self.offc_votes.groupby(['SelectionMethod', 'support'])['weight'].sum()
-        
-        empty = pd.Series(dtype='int64', name='weight')
-        empty.index.name = 'support'
-
-        tallies = []
-
-        for category in ['app', 'user', 'chain']:
-            cat_counts = counts.get(category, empty).to_dict(into=defaultdict(int))
-
-            approval_thresh_pct = (self.proposal_type_info['approval_threshold_bps'] / 10000)
-            quorum_thresh_pct =  (self.proposal_type_info['quorum_bps'] / 10000)
-
-            eligible_votes = self.ch_counts[category]
-            
-            tally = BasicTally(eligible_votes, quorum_thresh_pct, approval_thresh_pct, cat_counts[0], cat_counts[1], cat_counts[2], include_abstain=self.include_abstain)
-            tallies.append(tally)
-        
-        return tallies
 
     def show_result(self):
 
@@ -201,7 +181,7 @@ class OffChain(Proposal, OffChainBasicMixin, OffChainApprovalMixin):
 
 from .decode_creates import decode_proposal_data
 
-class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
+class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin, OnChainOptimisticMixin):
     emoji = '⛓️'
     def __init__(self, row):
         self.row = row.to_dict()
@@ -261,6 +241,16 @@ class OnChain(Proposal, OnChainBasicMixin, OnChainApprovalMixin):
 
             final_tally = FinalApprovalTally([tally], weights = weights, quorum_thresh_pct = tally.quorum_thresh_pct, approval_thresh_pct = tally.approval_thresh_pct)
             print(final_tally.gen_tally_report("Final"))
+        
+        elif self.proposal_type_label == 'optimistic':
+            tally = self.calculate_optimistic_tally()
+            print(tally.gen_tally_report("Token House", include_quorum=False))
+
+            against_thresh_tiers = {1 : 0.2}
+
+            final_tally = FinalOptimisticTally([tally], weights = weights, against_thresh_tiers = against_thresh_tiers)
+            print(final_tally.gen_tally_report("Final"))
+            
         else:
             raise Exception(f"Unknown proposal type: {self.proposal_type_label}")
 
@@ -275,7 +265,9 @@ class Hybrid(Proposal):
         self.on_chain_p = OnChain(on_chain)
         self.on_chain = on_chain.to_dict()
 
-        assert self.off_chain_p.include_abstain == self.on_chain_p.include_abstain
+        if self.off_chain_p.include_abstain != self.on_chain_p.include_abstain:
+            raise NotImplementedError("Offchain and Onchain abstain logic must match.")
+
         self.include_abstain = self.off_chain_p.include_abstain
 
         self.onchain_proposal_id = self.on_chain_p.id
@@ -312,6 +304,10 @@ class Hybrid(Proposal):
             onc_tally = self.on_chain_p.calculate_approval_tally()
             offc_tallies = self.off_chain_p.calculate_approval_tallies()
 
+        elif self.proposal_type_label == 'optimistic':
+            onc_tally = self.on_chain_p.calculate_optimistic_tally(tiers=self.off_chain_p.voto_levels)
+            offc_tallies = self.off_chain_p.calculate_optimistic_tallies()
+    
         tallies = [onc_tally] + offc_tallies
 
         print(tallies[0].gen_tally_report("Token House", weights[0]))
@@ -319,18 +315,25 @@ class Hybrid(Proposal):
         print(tallies[2].gen_tally_report("Citizen House - Users", weights[2]))
         print(tallies[3].gen_tally_report("Citizen House - Chains", weights[3]))
 
-        quorum_thresh_pct = tallies[0].quorum_thresh_pct
-        approval_thresh_pct = tallies[0].approval_thresh_pct
+        if self.proposal_type_label in ('basic', 'approval'):
+            quorum_thresh_pct = tallies[0].quorum_thresh_pct
+            approval_thresh_pct = tallies[0].approval_thresh_pct
 
-        for i, t in enumerate(tallies):
-            assert t.quorum_thresh_pct == quorum_thresh_pct, f"Quorum PCTs do not match: {t.quorum_thresh_pct} != {quorum_thresh_pct} for tally {i}"
-            assert t.approval_thresh_pct == approval_thresh_pct, f"Approval Threshold PCTs do not match: {t.approval_thresh_pct} != {approval_thresh_pct} for tally {i}"
+            for i, t in enumerate(tallies):
+                assert t.quorum_thresh_pct == quorum_thresh_pct, f"Quorum PCTs do not match: {t.quorum_thresh_pct} != {quorum_thresh_pct} for tally {i}"
+                assert t.approval_thresh_pct == approval_thresh_pct, f"Approval Threshold PCTs do not match: {t.approval_thresh_pct} != {approval_thresh_pct} for tally {i}"
+        
+        elif self.proposal_type_label in ('optimistic',):
+            against_thresh_pct = tallies[0].against_thresh_pct
 
         if self.proposal_type_label == 'basic':
             final_tally = FinalBasicTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct, include_abstain=self.include_abstain)
             print(final_tally.gen_tally_report("Final"))
         elif self.proposal_type_label == 'approval':
             final_tally = FinalApprovalTally(tallies, weights = weights, quorum_thresh_pct = quorum_thresh_pct, approval_thresh_pct = approval_thresh_pct)
+            print(final_tally.gen_tally_report("Final"))
+        elif self.proposal_type_label == 'optimistic':
+            final_tally = FinalOptimisticTally(tallies, weights = weights, against_thresh_tiers=self.off_chain_p.voto_levels)
             print(final_tally.gen_tally_report("Final"))
     
     def load_context(self):
@@ -345,13 +348,32 @@ class ProposalLister:
         on_chain = []
         hybrid = []
 
+        offchain_only = off_chain_props_df[off_chain_props_df['onchain_proposalid'] == '0']
+
+        # We have a problem where our UI lets you create multiple EAS attestations.
+        offchain_with_onchain = off_chain_props_df[off_chain_props_df['onchain_proposalid'] != '0']
+        offchain_with_onchain = offchain_with_onchain.drop_duplicates('onchain_proposalid', keep='last')
+
+        off_chain_props_df = pd.concat([offchain_only, offchain_with_onchain])
+
         for idx, row in off_chain_props_df.iterrows():
             if row['onchain_proposalid'] == '0':
-                off_chain.append(OffChain(row))
+                try:
+                    off_chain.append(OffChain(row))
+                except NotImplementedError as e:
+                    print(f"Warning: {e}")
             else:
                 on_chain_prop = on_chain_props_df[on_chain_props_df['proposal_id'] == row['onchain_proposalid']]
-                hybrid.append(Hybrid(row, on_chain_prop.iloc[0]))
-                on_chain_props_df = on_chain_props_df[on_chain_props_df['proposal_id'] != row['onchain_proposalid']]
+
+                if on_chain_prop.empty:
+                    print(f"Warning: Onchain Proposal ID# {row['onchain_proposalid']} not found, but mentioned in OffChain Prop ID {row['proposalId']}")
+                else:
+                    try:
+                        hybrid.append(Hybrid(row, on_chain_prop.iloc[0]))
+                        on_chain_props_df = on_chain_props_df[on_chain_props_df['proposal_id'] != row['onchain_proposalid']]
+                    except NotImplementedError as e:
+                        print(f"Warning: {e}")
+
 
         for idx, row in on_chain_props_df.iterrows():
             on_chain.append(OnChain(row))
@@ -423,3 +445,10 @@ def load_proposal_data():
 
 if __name__ == '__main__':
     cli()
+
+"""
+25881190083318169286901946609701626294276077755024338526026685811531833848996-60262454855309230899587850064256879056222955035702291827454818794023677710944
+
+25881190083318169286901946609701626294276077755024338526026685811531833848996 -> https://op-atlas-fx6v5dqp9-voteagora.vercel.app/proposals/21045975496005278211124638822250570255307319196331346617887458740519548845124
+
+"""
